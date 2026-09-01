@@ -5,8 +5,8 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
-    "build": "node ./node_modules/typescript/bin/tsc",
-    "postbuild": "npx shx cp -r html dist",
+    "build": "tsc",
+    "postbuild": "cp -r html dist",
     "start": "node dist/server.js"
   },
   "keywords": [],
@@ -33,7 +33,6 @@
     "@types/node": "^20.19.43",
     "@types/pdf-parse": "^1.1.5",
     "nodemon": "^3.1.0",
-    "shx": "^0.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
