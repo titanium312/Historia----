@@ -3,14 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "dist/server.js",
-  
-"scripts": {
-  "dev": "nodemon --exec ts-node src/server.ts",
-  "build": "node ./node_modules/typescript/bin/tsc",
-  "postbuild": "copyfiles -u 1 html/**/* dist",
-  "start": "node dist/server.js"
-}
-  ,
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "build": "node ./node_modules/typescript/bin/tsc",
+    "postbuild": "copyfiles -u 1 html/**/* dist",
+    "start": "node dist/server.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
