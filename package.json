@@ -4,9 +4,10 @@
   "description": "",
   "main": "dist/server.js",
   
-  "scripts": {
+"scripts": {
   "dev": "nodemon --exec ts-node src/server.ts",
   "build": "node ./node_modules/typescript/bin/tsc",
+  "postbuild": "copyfiles -u 1 html/**/* dist",
   "start": "node dist/server.js"
 }
   ,
