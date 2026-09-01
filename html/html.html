@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Buscador de Admisiones | SaludPlus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* ---------- Reset y base ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f4f7fc;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 20, 50, 0.08);
+            padding: 35px 40px 45px;
+            transition: all 0.2s;
+        }
+
+        /* ---------- Header ---------- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .header h1 {
+            font-size: 26px;
+            font-weight: 600;
+            color: #0b2b4a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 i {
+            color: #2a7de1;
+            font-size: 28px;
+        }
+
+        .badge {
+            background: #eef3fa;
+            padding: 6px 18px;
+            border-radius: 100px;
+            font-size: 14px;
+            color: #2a4b6e;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* ---------- Search area ---------- */
+        .search-area {
+            background: #f9fbfd;
+            border-radius: 20px;
+            padding: 22px 24px;
+            margin-bottom: 26px;
+            border: 1px solid #e9edf4;
+        }
+
+        .search-area label {
+            display: block;
+            font-weight: 500;
+            color: #1d3a5a;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .search-area label i {
+            margin-right: 8px;
+            color: #2a7de1;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+
+        .flex-row .textarea-wrapper {
+            flex: 1 1 300px;
+            min-width: 200px;
+        }
+
+        .flex-row textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #dce3ec;
+            border-radius: 14px;
+            font-family: 'Inter', monospace;
+            font-size: 14px;
+            background: white;
+            resize: vertical;
+            min-height: 76px;
+            transition: 0.2s;
+            color: #0b2b4a;
+            line-height: 1.5;
+        }
+        .flex-row textarea:focus {
+            outline: none;
+            border-color: #2a7de1;
+            box-shadow: 0 0 0 3px rgba(42, 125, 225, 0.12);
+        }
+
+        .flex-row .actions {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            color: #1d3a5a;
+            border: 1px solid #dce3ec;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: #1a5fb4;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(26, 95, 180, 0.25);
+        }
+        .btn-primary:hover {
+            background: #134a8f;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(26, 95, 180, 0.3);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-outline:hover {
+            background: #f0f4fa;
+        }
+        .btn i {
+            font-size: 15px;
+        }
+
+        /* ---------- Stats & Progress ---------- */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .stats .count {
+            font-size: 14px;
+            color: #2a4b6e;
+            background: #eef3fa;
+            padding: 4px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+        }
+        .stats .count strong {
+            color: #0b2b4a;
+        }
+
+        .loader {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            color: #2a7de1;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .loader.active {
+            display: flex;
+        }
+        .loader i {
+            font-size: 18px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            background: #e9edf4;
+            border-radius: 20px;
+            height: 6px;
+            margin: 6px 0 18px 0;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-container.active {
+            display: block;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2a7de1, #6ca6f0);
+            border-radius: 20px;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            font-size: 12px;
+            color: #2a4b6e;
+            margin-top: 2px;
+            text-align: right;
+        }
+
+        /* ---------- Tabla profesional ---------- */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid #e9edf4;
+            background: white;
+            margin-top: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            min-width: 880px; /* para que no se comprima demasiado */
+        }
+
+        thead {
+            background: #f2f6fc;
+            border-bottom: 2px solid #dce3ec;
+        }
+        th {
+            text-align: left;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: #1d3a5a;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #edf2f8;
+            color: #1f3b57;
+            vertical-align: middle;
+            line-height: 1.4;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        tbody tr:hover {
+            background: #f8fafd;
+        }
+
+        /* Anchos relativos para que la tabla use todo el ancho */
+        th:nth-child(1), td:nth-child(1) { width: 11%; }  /* Admisión */
+        th:nth-child(2), td:nth-child(2) { width: 15%; }  /* Documento */
+        th:nth-child(3), td:nth-child(3) { width: 20%; }  /* Nombre */
+        th:nth-child(4), td:nth-child(4) { width: 22%; }  /* Entidad */
+        th:nth-child(5), td:nth-child(5) { width: 10%; }  /* Fecha */
+        th:nth-child(6), td:nth-child(6) { width: 8%; }   /* Hora */
+        th:nth-child(7), td:nth-child(7) { width: 14%; }  /* Estado */
+
+        /* Badge de estado */
+        .estado-badge {
+            display: inline-block;
+            padding: 3px 14px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e8f0fe;
+            color: #1a5fb4;
+            text-align: center;
+            min-width: 60px;
+        }
+        .estado-badge.activo {
+            background: #e0f2e6;
+            color: #0e7b4a;
+        }
+        .estado-badge.inactivo {
+            background: #fce4ec;
+            color: #b71c1c;
+        }
+
+        /* ---------- Grupos por término ---------- */
+        .term-group {
+            display: table-row-group;
+        }
+        .term-header-row {
+            background: #f0f4fa;
+            border-bottom: 2px solid #d0d9e8;
+        }
+        .term-header-row td {
+            padding: 10px 16px;
+            font-weight: 600;
+            color: #0b2b4a;
+            background: inherit;
+            border-bottom: 2px solid #d0d9e8;
+        }
+        .term-header-row .term-badge {
+            background: #2a7de1;
+            color: white;
+            padding: 2px 14px;
+            border-radius: 40px;
+            font-size: 12px;
+            margin-left: 12px;
+            font-weight: 600;
+        }
+        .term-header-row i {
+            color: #2a7de1;
+            margin-right: 8px;
+        }
+
+        /* Colores de grupo (fondo del header) */
+        .group-color-0 .term-header-row { background: #fce4ec; border-bottom-color: #f8bbd0; }
+        .group-color-1 .term-header-row { background: #e3f2fd; border-bottom-color: #bbdefb; }
+        .group-color-2 .term-header-row { background: #e8f5e9; border-bottom-color: #c8e6c9; }
+        .group-color-3 .term-header-row { background: #fff3e0; border-bottom-color: #ffe0b2; }
+        .group-color-4 .term-header-row { background: #f3e5f5; border-bottom-color: #e1bee7; }
+        .group-color-5 .term-header-row { background: #e0f7fa; border-bottom-color: #b2ebf2; }
+        .group-color-6 .term-header-row { background: #fbe9e7; border-bottom-color: #ffccbc; }
+        .group-color-7 .term-header-row { background: #f1f8e9; border-bottom-color: #dcedc8; }
+        .group-color-8 .term-header-row { background: #ede7f6; border-bottom-color: #d1c4e9; }
+        .group-color-9 .term-header-row { background: #fff8e1; border-bottom-color: #ffe082; }
+
+        /* Las filas de datos mantienen fondo blanco, el hover es sutil */
+        .term-group tbody tr:hover {
+            background: #f8fafd;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #6a7f9b;
+        }
+        .empty-state i {
+            font-size: 44px;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+        }
+        .empty-state p {
+            font-size: 15px;
+        }
+
+        /* ---------- Footer ---------- */
+        .footer-hint {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #6f8aa8;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-top: 1px solid #e9edf4;
+            padding-top: 22px;
+        }
+        .footer-hint i {
+            margin-right: 6px;
+            color: #2a7de1;
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 16px;
+                border-radius: 24px;
+            }
+            .header h1 {
+                font-size: 20px;
+            }
+            .flex-row .actions {
+                flex-direction: row;
+                width: 100%;
+            }
+            .flex-row .actions .btn {
+                flex: 1;
+                justify-content: center;
+            }
+            .stats {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            table {
+                font-size: 12.5px;
+                min-width: 700px;
+            }
+            th, td {
+                padding: 10px 12px;
+            }
+            .term-header-row td {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 14px 10px;
+            }
+            .search-area {
+                padding: 16px;
+            }
+            .flex-row textarea {
+                min-height: 60px;
+                font-size: 13px;
+            }
+            .btn {
+                font-size: 13px;
+                padding: 8px 16px;
+            }
+            .badge {
+                font-size: 12px;
+                padding: 4px 12px;
+            }
+            table {
+                font-size: 11.5px;
+                min-width: 600px;
+            }
+            th, td {
+                padding: 8px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-stethoscope"></i> Buscador de Admisiones</h1>
+            <span class="badge"><i class="fas fa-server"></i> SaludPlus · API</span>
+        </div>
+
+        <!-- Búsqueda -->
+        <div class="search-area">
+            <label for="searchInput">
+                <i class="fas fa-pencil-alt"></i>
+                Ingresa números de documento o admisión (separados por coma, espacio o salto de línea)
+            </label>
+            <div class="flex-row">
+                <div class="textarea-wrapper">
+                    <textarea id="searchInput" placeholder="Ejemplo: 1066534699, 812038, 1234&#10;o pon cada uno en una línea"></textarea>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-primary" id="searchBtn"><i class="fas fa-search"></i> Buscar</button>
+                    <button class="btn btn-outline" id="clearBtn"><i class="fas fa-undo-alt"></i> Limpiar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats y progreso -->
+        <div class="stats">
+            <div class="count" id="resultCount">
+                <i class="fas fa-list-ul"></i>
+                <strong id="countNumber">0</strong> resultados
+            </div>
+            <div class="loader" id="loader">
+                <i class="fas fa-circle-notch"></i> Buscando...
+            </div>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+            <div class="progress-text" id="progressText">0%</div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th># Admisión</th>
+                        <th>Documento</th>
+                        <th>Nombre</th>
+                        <th>Entidad</th>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <p>Ingresa uno o varios números y presiona <strong>Buscar</strong></p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-hint">
+            <span><i class="fas fa-hashtag"></i> Busca por documento o admisión</span>
+            <span><i class="fas fa-arrow-right"></i> Múltiples valores separados por coma, espacio o salto de línea</span>
+            <span><i class="fas fa-layer-group"></i> Resultados agrupados por término</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // DOM refs
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const resultsBody = document.getElementById('resultsBody');
+            const countNumber = document.getElementById('countNumber');
+            const loader = document.getElementById('loader');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            const API_URL = 'http://localhost:3000/buscarAdmision';
+
+            const groupColors = [
+                'group-color-0', 'group-color-1', 'group-color-2', 'group-color-3', 'group-color-4',
+                'group-color-5', 'group-color-6', 'group-color-7', 'group-color-8', 'group-color-9'
+            ];
+
+            function parseSearchTerms(text) {
+                const raw = text.split(/[\s,;]+/);
+                const terms = raw.map(s => s.trim()).filter(s => s.length > 0);
+                return [...new Set(terms)];
+            }
+
+            function renderGroupedResults(resultsMap) {
+                const tbody = resultsBody;
+                const terms = Object.keys(resultsMap);
+
+                if (terms.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>No se encontraron resultados para tu búsqueda</p>
+                            </td>
+                        </tr>
+                    `;
+                    countNumber.textContent = '0';
+                    return;
+                }
+
+                let totalRows = 0;
+                terms.forEach(term => totalRows += resultsMap[term].length);
+                countNumber.textContent = totalRows;
+
+                let html = '';
+                terms.forEach((term, index) => {
+                    const rows = resultsMap[term];
+                    // Ordenar por fecha descendente (más reciente primero)
+                    const sorted = [...rows].sort((a, b) => {
+                        const dateA = new Date(a[4].split('/').reverse().join('/'));
+                        const dateB = new Date(b[4].split('/').reverse().join('/'));
+                        return dateB - dateA;
+                    });
+
+                    const colorClass = groupColors[index % groupColors.length];
+                    html += `<tbody class="term-group ${colorClass}">`;
+                    // Fila de encabezado del grupo
+                    html += `
+                        <tr class="term-header-row">
+                            <td colspan="7">
+                                <i class="fas fa-tag"></i>
+                                <strong>Término:</strong> ${term}
+                                <span class="term-badge">${sorted.length} resultados</span>
+                            </td>
+                        </tr>
+                    `;
+                    // Filas de datos
+                    sorted.forEach(row => {
+                        const codigo = row[0] || '';
+                        const documento = row[1] || '';
+                        const nombre = row[2] || '';
+                        const entidad = row[3] || '';
+                        const fecha = row[4] || '';
+                        const hora = row[5] || '';
+                        const estado = row[6] || '';
+                        let estadoText = estado === '1' ? 'Activo' : estado === '0' ? 'Inactivo' : estado || '—';
+                        let estadoClass = '';
+                        if (estado === '1') estadoClass = 'activo';
+                        else if (estado === '0') estadoClass = 'inactivo';
+
+                        html += `
+                            <tr>
+                                <td><strong>${codigo}</strong></td>
+                                <td>${documento}</td>
+                                <td>${nombre}</td>
+                                <td>${entidad}</td>
+                                <td>${fecha}</td>
+                                <td>${hora}</td>
+                                <td>
+                                    <span class="estado-badge ${estadoClass}">${estadoText}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    html += `</tbody>`;
+                });
+
+                resultsBody.innerHTML = html;
+            }
+
+            async function performSearch() {
+                const rawText = searchInput.value;
+                const terms = parseSearchTerms(rawText);
+
+                if (terms.length === 0) {
+                    resultsBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <p>Por favor, ingresa al menos un número de documento o admisión.</p>
+                            </td>
+                        </tr>
+                    `;
+                    countNumber.textContent = '0';
+                    return;
+                }
+
+                searchBtn.disabled = true;
+                loader.classList.add('active');
+                progressContainer.classList.add('active');
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+
+                const resultsMap = {};
+                let completed = 0;
+                const total = terms.length;
+
+                try {
+                    for (const term of terms) {
+                        try {
+                            const response = await fetch(API_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ busqueda: term })
+                            });
+
+                            if (!response.ok) {
+                                console.warn(`Error en "${term}": ${response.status}`);
+                                resultsMap[term] = [];
+                            } else {
+                                const result = await response.json();
+                                if (result.success && Array.isArray(result.data)) {
+                                    resultsMap[term] = result.data;
+                                } else {
+                                    resultsMap[term] = [];
+                                }
+                            }
+                        } catch (err) {
+                            console.error(`Error al buscar "${term}":`, err);
+                            resultsMap[term] = [];
+                        }
+
+                        completed++;
+                        const percent = Math.round((completed / total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressText.textContent = percent + '%';
+                    }
+
+                    renderGroupedResults(resultsMap);
+
+                } catch (error) {
+                    console.error('Error general:', error);
+                    resultsBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                <i class="fas fa-times-circle"></i>
+                                <p>Ocurrió un error al realizar la búsqueda. Intenta de nuevo.</p>
+                            </td>
+                        </tr>
+                    `;
+                    countNumber.textContent = '0';
+                } finally {
+                    searchBtn.disabled = false;
+                    loader.classList.remove('active');
+                    setTimeout(() => {
+                        progressContainer.classList.remove('active');
+                    }, 600);
+                }
+            }
+
+            // Event listeners
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    performSearch();
+                }
+            });
+            clearBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                resultsBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <p>Ingresa uno o varios números y presiona <strong>Buscar</strong></p>
+                        </td>
+                    </tr>
+                `;
+                countNumber.textContent = '0';
+                progressContainer.classList.remove('active');
+            });
+
+            // (Opcional) Ejemplo inicial
+            // searchInput.value = '1066534699, 812038, 1234';
+        })();
+    </script>
+</body>
+</html>
