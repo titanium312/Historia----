@@ -4,9 +4,9 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node src/server.ts",
-    "build": "tsc",
-    "postbuild": "cp -r html dist",
+    "dev": "nodemon --exec ts-node server.ts",
+    "build": "npx tsc",
+    "postbuild": "node -e \"require('fs').cpSync('html', 'dist/html', {recursive: true})\"",
     "start": "node dist/server.js"
   },
   "keywords": [],
