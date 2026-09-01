@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "node ./node_modules/typescript/bin/tsc",
-    "postbuild": "node ./node_modules/copyfiles/bin/copyfiles -u 1 html/**/* dist",
+    "postbuild": "npx copyfiles html/**/* dist",
     "start": "node dist/server.js"
   },
   "keywords": [],
