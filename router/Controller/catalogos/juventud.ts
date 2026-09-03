@@ -151,6 +151,7 @@ export default function juventud(data: any): any {
 
   let tamizajesTexto =
     'Se solicitan tamizajes preventivos: glicemia, perfil lipídico, uroanálisis, pruebas rápidas para VIH, Hepatitis B y C, y Sífilis. ';
+  // Usamos generoId para los textos, pero para las validaciones usamos esMujer
   if (generoId === 2) tamizajesTexto += 'Además, se solicita citología cervicouterina. ';
 
   // Textos de exploración física
@@ -211,7 +212,6 @@ export default function juventud(data: any): any {
     const r = resultado.trim().toLowerCase();
     if (r === "positivo" || r === "reactivo") return { codigo: "4", tieneResultado: true };
     if (r === "negativo" || r === "no reactivo") return { codigo: "5", tieneResultado: true };
-    // Si es otro valor (ej: "21", "0"), asumimos que no hay resultado válido
     return { codigo: "0", tieneResultado: false };
   };
 
@@ -227,10 +227,13 @@ export default function juventud(data: any): any {
   };
 
   // ============================================================
-  // 8. DETERMINAR SEXO Y APLICAR LÓGICA CONDICIONAL
+  // 8. DETERMINAR SEXO Y APLICAR LÓGICA CONDICIONAL (CORREGIDO)
   // ============================================================
-  const esHombre = (sexoId === 2 || generoId === 1);
-  const esMujer = !esHombre;
+  // Usamos los campos textuales para determinar el sexo, ya que los códigos pueden ser inconsistentes.
+  // En los datos de ejemplo, paciente.sexo_nombre = "FEMENINO" y generoTexto = "FEMENINO".
+  const esMujer = (data.paciente?.sexo_nombre === 'FEMENINO' || data.generoTexto === 'FEMENINO');
+  const esHombre = !esMujer;
+  const esMujerReproductiva = esMujer && edad >= 10;
 
   // Mapear resultados de pruebas
   const vihMap = mapPruebaRapida(vih);
@@ -243,9 +246,11 @@ export default function juventud(data: any): any {
   const fechaHepB = hepBMap.tieneResultado ? fechaConsulta : "1845-01-01";
 
   // ============================================================
-  // 8.1 LÓGICA PARA MUJERES EN EDAD REPRODUCTIVA (≥10 años)
+  // 8.1 LÓGICA PARA AGUDEZA VISUAL (CORREGIDO)
   // ============================================================
-  const esMujerReproductiva = esMujer && edad >= 10;
+  // Para >3 años, la fecha no puede ser 1845; se usa 1800 si no hay datos.
+  const tieneAgudeza = (ojoDerecho !== null && ojoIzquierdo !== null);
+  const fechaAgudeza = tieneAgudeza ? fechaConsulta : "1800-01-01";
 
   // ============================================================
   // 9. CONSTRUCCIÓN DEL OBJETO FINAL
@@ -1102,90 +1107,88 @@ export default function juventud(data: any): any {
     // ============================================================
     // 10. BLOQUE RESOLUCION 4505 (CORREGIDO CON VALIDACIONES)
     // ============================================================
-resolucion4505: [
-  {
-    // --- Campos fijos ---
-    sintomatico_respiratorio: "2",
-    fecha_toma_baciloscopia_diagnostico: "1845-01-01",
-    resultado_baciloscopia_diagnostico: "4",
-    consumo_tabaco: "99",
-    clasificacion_riesgo_cardiovascular: riesgoCardiovascular ? String(riesgoCardiovascular) : "21",
-    "clasificación_riesgo_metabolico": riesgoMetabolico ? String(riesgoMetabolico) : "21",
-    tratamiento_ablativo_escision_inspeccion_visual: "0",
+    resolucion4505: [
+      {
+        // --- Campos fijos ---
+        sintomatico_respiratorio: "2",
+        fecha_toma_baciloscopia_diagnostico: "1845-01-01",
+        resultado_baciloscopia_diagnostico: "4",
+        consumo_tabaco: "99",
+        clasificacion_riesgo_cardiovascular: riesgoCardiovascular ? String(riesgoCardiovascular) : "21",
+        "clasificación_riesgo_metabolico": riesgoMetabolico ? String(riesgoMetabolico) : "21",
+        tratamiento_ablativo_escision_inspeccion_visual: "0",
 
-    // --- Gestación (solo mujeres ≥10) ---
-    gestacion: esMujerReproductiva ? "2" : "0",
+        // --- Gestación (solo mujeres ≥10) ---
+        gestacion: esMujerReproductiva ? "2" : "0",
 
-    // --- CÁNCER DE CÉRVIX (valores fijos según tabla) ---
-    tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
-    resultado_tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
-    calidad_muestra_citologia_cervicouterina: "0",
-    codigo_habilitacion_IPS_citologia_cervicouterina: "0",
-    resultado_biopsia_cervicouterina: esMujerReproductiva ? "21" : "0",
+        // --- CÁNCER DE CÉRVIX (valores fijos según tabla) ---
+        tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
+        // Se agrega el campo 87 - Fecha de tamizaje cáncer de cuello uterino
+        fecha_tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "1835-01-01" : "1845-01-01",
+        resultado_tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
+        calidad_muestra_citologia_cervicouterina: "0",
+        codigo_habilitacion_IPS_citologia_cervicouterina: "0",
+        resultado_biopsia_cervicouterina: esMujerReproductiva ? "21" : "0",
 
-    // --- Fechas de cuello uterino (biopsia siempre 1845 por validación) ---
-    citologia_cervicouterina: esMujerReproductiva ? "1800-01-01" : "1845-01-01",
-    fecha_colposcopia: esMujerReproductiva ? "1800-01-01" : "1845-01-01",
-    fecha_biopsia_cervical: esMujerReproductiva ? "1800-01-01" : "1845-01-01", // Siempre comodín (no se realiza en juventud)
+        // --- Fechas de cuello uterino (biopsia siempre 1845 por validación) ---
+        citologia_cervicouterina: esMujerReproductiva ? "1800-01-01" : "1845-01-01",
+        fecha_colposcopia: esMujerReproductiva ? "1800-01-01" : "1845-01-01",
+        fecha_biopsia_cervical: esMujerReproductiva ? "1800-01-01" : "1845-01-01", // Siempre comodín (no se realiza en juventud)
 
-    // --- MAMA (para juventud: no aplica por edad) ---
-    fecha_mamografía: "1845-01-01",        // Corregido: 1845 (no 1800) para <35 años
-    resultado_mamografia_res202: "21",
-    fecha_toma_biopsia_seno_BACAF: "1845-01-01",
-    fecha_resultado_biopsia_seno_BACAF: "1845-01-01",
-    resultado_biopsia_mama: "21",
+        // --- MAMA (para juventud: no aplica por edad) ---
+        fecha_mamografía: "1845-01-01",
+        resultado_mamografia_res202: "21",
+        fecha_toma_biopsia_seno_BACAF: "1845-01-01",
+        fecha_resultado_biopsia_seno_BACAF: "1845-01-01",
+        resultado_biopsia_mama: "21",
 
-    // --- PLANIFICACIÓN FAMILIAR ---
-    suministro_metodo_anticonceptivo: esMujer ? "21" : "1",
-    planificación_familiar_primera_vez: "1800-01-01",
-    fecha_suministro_metodo_anticonceptivo: "1800-01-01",
+        // --- PLANIFICACIÓN FAMILIAR ---
+        suministro_metodo_anticonceptivo: esMujer ? "21" : "1",
+        planificación_familiar_primera_vez: "1800-01-01",
+        fecha_suministro_metodo_anticonceptivo: "1800-01-01",
 
-    // --- LABORATORIOS (corregidos: si no hay dato, fecha=1800 y resultado=998) ---
-    codigo_pais: "170",
-    fecha_consulta_valoracion_integral: fechaConsulta,
+        // --- LABORATORIOS (corregidos: si no hay dato, fecha=1800 y resultado=998) ---
+        codigo_pais: "170",
+        fecha_consulta_valoracion_integral: fechaConsulta,
 
-    // Glicemia
-    resultado_glicemia_basal: (glicemia !== null && glicemia > 0 && glicemia < 998) ? String(glicemia) : "998",
-    fecha_toma_glicemia_basal: (glicemia !== null && glicemia > 0 && glicemia < 998) ? fechaConsulta : "1800-01-01",
+        // Glicemia
+        resultado_glicemia_basal: (glicemia !== null && glicemia > 0 && glicemia < 998) ? String(glicemia) : "998",
+        fecha_toma_glicemia_basal: (glicemia !== null && glicemia > 0 && glicemia < 998) ? fechaConsulta : "1800-01-01",
 
-    // LDL
-    resultado_LDL: (ldl !== null && ldl > 0 && ldl < 998) ? String(ldl) : "998",
-    fecha_toma_LDL: (ldl !== null && ldl > 0 && ldl < 998) ? fechaConsulta : "1800-01-01",
+        // LDL
+        resultado_LDL: (ldl !== null && ldl > 0 && ldl < 998) ? String(ldl) : "998",
+        fecha_toma_LDL: (ldl !== null && ldl > 0 && ldl < 998) ? fechaConsulta : "1800-01-01",
 
-    // HDL
-    resultado_HDL: (hdl !== null && hdl > 0 && hdl < 998) ? String(hdl) : "998",
-    fecha_toma_HDL: (hdl !== null && hdl > 0 && hdl < 998) ? fechaConsulta : "1800-01-01",
+        // HDL
+        resultado_HDL: (hdl !== null && hdl > 0 && hdl < 998) ? String(hdl) : "998",
+        fecha_toma_HDL: (hdl !== null && hdl > 0 && hdl < 998) ? fechaConsulta : "1800-01-01",
 
-    // Triglicéridos
-    resultado_trigliceridos: (trigliceridos !== null && trigliceridos > 0 && trigliceridos < 998) ? String(trigliceridos) : "998",
-    fecha_toma_trigliceridos: (trigliceridos !== null && trigliceridos > 0 && trigliceridos < 998) ? fechaConsulta : "1800-01-01",
+        // Triglicéridos
+        resultado_trigliceridos: (trigliceridos !== null && trigliceridos > 0 && trigliceridos < 998) ? String(trigliceridos) : "998",
+        fecha_toma_trigliceridos: (trigliceridos !== null && trigliceridos > 0 && trigliceridos < 998) ? fechaConsulta : "1800-01-01",
 
-    // Hemoglobina (mantiene 1845 por ser validación especial)
-    resultado_hemoglobina: (hemoglobina !== null && hemoglobina > 0) ? String(hemoglobina) : "0",
-    fecha_toma_hemoglobina: (hemoglobina !== null && hemoglobina > 0) ? fechaConsulta : "1845-01-01",
+        // Hemoglobina (mantiene 1845 por ser validación especial)
+        resultado_hemoglobina: (hemoglobina !== null && hemoglobina > 0) ? String(hemoglobina) : "0",
+        fecha_toma_hemoglobina: (hemoglobina !== null && hemoglobina > 0) ? fechaConsulta : "1845-01-01",
 
-    // Creatinina
-    resultado_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? String(creatinina) : "998",
-    fecha_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? fechaConsulta : "1800-01-01",
+        // Creatinina
+        resultado_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? String(creatinina) : "998",
+        fecha_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? fechaConsulta : "1800-01-01",
 
-    // --- Agudeza visual ---
-    agudeza_visual_lejana_ojo_izquierdo: agudezaToCode(ojoIzquierdo),
-    agudeza_visual_lejana_ojo_derecho: agudezaToCode(ojoDerecho),
-    valoracion_agudeza_visual: fechaConsulta,
+        // --- Agudeza visual (CORREGIDO: fecha condicional) ---
+        agudeza_visual_lejana_ojo_izquierdo: agudezaToCode(ojoIzquierdo),
+        agudeza_visual_lejana_ojo_derecho: agudezaToCode(ojoDerecho),
+        valoracion_agudeza_visual: fechaAgudeza, // 1800 si no hay datos
 
-    // --- Pruebas rápidas ---
-    resultado_antigeno_superficie_hepatitisB_toda: hepBMap.codigo,
-    fecha_antigeno_superficie_hepatitisB_toda: fechaHepB,
-    resultado_prueba_tamizaje_sifilis: sifilisMap.codigo,
-    fecha_serologia_sifilis: fechaSifilis,
-    resultado_prueba_VIH: vihMap.codigo,
-    fecha_tomae_elisa_VIH: fechaVIH,
-  },
-]
-    
-    
-    ,
+        // --- Pruebas rápidas ---
+        resultado_antigeno_superficie_hepatitisB_toda: hepBMap.codigo,
+        fecha_antigeno_superficie_hepatitisB_toda: fechaHepB,
+        resultado_prueba_tamizaje_sifilis: sifilisMap.codigo,
+        fecha_serologia_sifilis: fechaSifilis,
+        resultado_prueba_VIH: vihMap.codigo,
+        fecha_tomae_elisa_VIH: fechaVIH,
+      },
+    ],
     historia_clinica_procedimientos_vacunacion: [],
   };
 }
-

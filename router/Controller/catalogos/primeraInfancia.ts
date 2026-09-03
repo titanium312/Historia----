@@ -454,8 +454,8 @@ export default function primeraInfancia(data: any): any {
     hallazgos_fisicos_otros_piel_historia: 'HIDRATADA, ASPECTO Y COLORACION NORMAL, SIN LESIONES',
     hallazgos_fisicos_otros_otro_historia: 'EMUNTORIOS NORMALES',
 
-    diagnostico_ingreso_tipo_historia: '2',
-    diagnostico_ingreso_fk_causa_externa: '1',
+    diagnostico_ingreso_tipo_historia: '1',
+    diagnostico_ingreso_fk_causa_externa: '40',
     diagnostico_ingreso_observaciones_historia: '',
     historia_clinica_enfermedades_diagnostico_ingreso: [
       { id_historia_enfermedad_diagnostico_ingreso: 0, fk_historia: 0, fk_enfermedad: 'Z001', fk_institucion: 0 }

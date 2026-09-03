@@ -517,8 +517,8 @@ export const vejez = (data: any) => {
     hallazgos_fisicos_otros_piel_historia: "Hidratada, aspecto y coloración normal, sin lesiones.",
     hallazgos_fisicos_otros_otro_historia: "Emuntorios normales.",
 
-    diagnostico_ingreso_tipo_historia: "2",
-    diagnostico_ingreso_fk_causa_externa: "1",
+    diagnostico_ingreso_tipo_historia: "1",
+    diagnostico_ingreso_fk_causa_externa: "40",
     diagnostico_ingreso_observaciones_historia: "",
     historia_clinica_enfermedades_diagnostico_ingreso: diagnosticos.map(d => ({
       id_historia_enfermedad_diagnostico_ingreso: 0,
@@ -1263,13 +1263,14 @@ export const vejez = (data: any) => {
       preguntas_de_whooley_p2_durante_los_ultimos_dias_ha_sentido_poco_interes: false,
       puntuacion_test_whooley: "0",
 
+
       escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: false,
-      escala_findrisc_con_que_frecuencia_come_frutas_verduras: "1",
+      escala_findrisc_con_que_frecuencia_come_frutas_verduras: "0",
       escala_findrisc_le_han_recetado_alguna_vez_nedicamentos_contra_la_hta: false,
       escala_findrisc_le_han_detectado_alguna_vez_niveles_altos_de_glucosa: false,
       escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "0",
-      puntuacion_escala_findrisc: "7",
-      porcentaje_escala_findrisc: "4",
+            puntuacion_escala_findrisc: "4",
+      porcentaje_escala_findrisc: "1",
 
       riesgo_cardiovascular_edad_oms_vejez: String(edad),
       riesgo_cardiovascular_sexo_oms_vejez: esMasculino ? "MASCULINO" : "FEMENINO",

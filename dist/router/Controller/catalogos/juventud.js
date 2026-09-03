@@ -143,6 +143,7 @@ function juventud(data) {
         otros: '',
     };
     let tamizajesTexto = 'Se solicitan tamizajes preventivos: glicemia, perfil lipídico, uroanálisis, pruebas rápidas para VIH, Hepatitis B y C, y Sífilis. ';
+    // Usamos generoId para los textos, pero para las validaciones usamos esMujer
     if (generoId === 2)
         tamizajesTexto += 'Además, se solicita citología cervicouterina. ';
     // Textos de exploración física
@@ -192,7 +193,6 @@ function juventud(data) {
             return { codigo: "4", tieneResultado: true };
         if (r === "negativo" || r === "no reactivo")
             return { codigo: "5", tieneResultado: true };
-        // Si es otro valor (ej: "21", "0"), asumimos que no hay resultado válido
         return { codigo: "0", tieneResultado: false };
     };
     /**
@@ -209,10 +209,13 @@ function juventud(data) {
         return { codigo: "0", tieneResultado: false };
     };
     // ============================================================
-    // 8. DETERMINAR SEXO Y APLICAR LÓGICA CONDICIONAL
+    // 8. DETERMINAR SEXO Y APLICAR LÓGICA CONDICIONAL (CORREGIDO)
     // ============================================================
-    const esHombre = (sexoId === 2 || generoId === 1);
-    const esMujer = !esHombre;
+    // Usamos los campos textuales para determinar el sexo, ya que los códigos pueden ser inconsistentes.
+    // En los datos de ejemplo, paciente.sexo_nombre = "FEMENINO" y generoTexto = "FEMENINO".
+    const esMujer = (data.paciente?.sexo_nombre === 'FEMENINO' || data.generoTexto === 'FEMENINO');
+    const esHombre = !esMujer;
+    const esMujerReproductiva = esMujer && edad >= 10;
     // Mapear resultados de pruebas
     const vihMap = mapPruebaRapida(vih);
     const sifilisMap = mapPruebaRapida(sifilis);
@@ -222,9 +225,11 @@ function juventud(data) {
     const fechaSifilis = sifilisMap.tieneResultado ? fechaConsulta : "1845-01-01";
     const fechaHepB = hepBMap.tieneResultado ? fechaConsulta : "1845-01-01";
     // ============================================================
-    // 8.1 LÓGICA PARA MUJERES EN EDAD REPRODUCTIVA (≥10 años)
+    // 8.1 LÓGICA PARA AGUDEZA VISUAL (CORREGIDO)
     // ============================================================
-    const esMujerReproductiva = esMujer && edad >= 10;
+    // Para >3 años, la fecha no puede ser 1845; se usa 1800 si no hay datos.
+    const tieneAgudeza = (ojoDerecho !== null && ojoIzquierdo !== null);
+    const fechaAgudeza = tieneAgudeza ? fechaConsulta : "1800-01-01";
     // ============================================================
     // 9. CONSTRUCCIÓN DEL OBJETO FINAL
     // ============================================================
@@ -1050,6 +1055,8 @@ function juventud(data) {
                 gestacion: esMujerReproductiva ? "2" : "0",
                 // --- CÁNCER DE CÉRVIX (valores fijos según tabla) ---
                 tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
+                // Se agrega el campo 87 - Fecha de tamizaje cáncer de cuello uterino
+                fecha_tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "1835-01-01" : "1845-01-01",
                 resultado_tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
                 calidad_muestra_citologia_cervicouterina: "0",
                 codigo_habilitacion_IPS_citologia_cervicouterina: "0",
@@ -1059,7 +1066,7 @@ function juventud(data) {
                 fecha_colposcopia: esMujerReproductiva ? "1800-01-01" : "1845-01-01",
                 fecha_biopsia_cervical: esMujerReproductiva ? "1800-01-01" : "1845-01-01", // Siempre comodín (no se realiza en juventud)
                 // --- MAMA (para juventud: no aplica por edad) ---
-                fecha_mamografía: "1845-01-01", // Corregido: 1845 (no 1800) para <35 años
+                fecha_mamografía: "1845-01-01",
                 resultado_mamografia_res202: "21",
                 fecha_toma_biopsia_seno_BACAF: "1845-01-01",
                 fecha_resultado_biopsia_seno_BACAF: "1845-01-01",
@@ -1089,10 +1096,10 @@ function juventud(data) {
                 // Creatinina
                 resultado_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? String(creatinina) : "998",
                 fecha_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? fechaConsulta : "1800-01-01",
-                // --- Agudeza visual ---
+                // --- Agudeza visual (CORREGIDO: fecha condicional) ---
                 agudeza_visual_lejana_ojo_izquierdo: agudezaToCode(ojoIzquierdo),
                 agudeza_visual_lejana_ojo_derecho: agudezaToCode(ojoDerecho),
-                valoracion_agudeza_visual: fechaConsulta,
+                valoracion_agudeza_visual: fechaAgudeza, // 1800 si no hay datos
                 // --- Pruebas rápidas ---
                 resultado_antigeno_superficie_hepatitisB_toda: hepBMap.codigo,
                 fecha_antigeno_superficie_hepatitisB_toda: fechaHepB,

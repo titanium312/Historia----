@@ -403,8 +403,8 @@ function obtenerNombreSexo(fk_sexo) {
     return MAPA_SEXO[fk_sexo] || 'No especificado';
 }
 const GENERO_ID_MAP = {
-    'FEMENINO': 2,
-    'MASCULINO': 1,
+    'FEMENINO': 1,
+    'MASCULINO': 2,
     'INDEFINIDO': null,
     'No especificado': null,
 };

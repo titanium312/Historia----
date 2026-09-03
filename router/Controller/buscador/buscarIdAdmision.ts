@@ -555,8 +555,8 @@ function obtenerNombreSexo(fk_sexo: number | null | undefined): string {
 }
 
 const GENERO_ID_MAP: Record<string, number | null> = {
-  'FEMENINO': 2,
-  'MASCULINO': 1,
+  'FEMENINO': 1,
+  'MASCULINO': 2,
   'INDEFINIDO': null,
   'No especificado': null,
 };

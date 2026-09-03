@@ -420,7 +420,7 @@ function infancia(data) {
         // ============================================================
         // DIAGNÓSTICOS
         // ============================================================
-        diagnostico_ingreso_tipo_historia: '3',
+        diagnostico_ingreso_tipo_historia: '1',
         diagnostico_ingreso_fk_causa_externa: '40',
         diagnostico_ingreso_observaciones_historia: `CONCLUSIÓN DE LA ATENCIÓN.\nIMPRESIÓN DIAGNOSTICA\n1.\tESCOLAR \n2.\tTALLA PARA LA EDAD: ADECUADA\n3.\tIMC PARA LA EDAD: ${imc >= 30 ? 'OBESIDAD' : imc < 18.5 ? 'BAJO PESO' : 'ADECUADO'}\n4.\tPAI COMPLETO PARA LA EDAD. \n5.\t TAMIZAJE DE MALTRATO NEGATIVO\n6.\t TAMIZAJE AUDITIVO Y VISUAL SIN ALTERACION\n\nVALORO ESCOLAR, SIN ANTECEDENTES PERSONALES Y FAMILIARES DE IMPORTANCIA, EN BUENAS CONDICIONES GENERALES, SIN SIGNOS GENERAL DE PELIGRO, HEMODINÁMICAMENTE ESTABLE, SIN ALTERACIÓN AL EXAMEN FÍSICO, SE VALORAN CURVAS ANTROPOMETRICAS DENTRO DE RANGOS NORMALES. \n\n`,
         historia_clinica_enfermedades_diagnostico_ingreso: [

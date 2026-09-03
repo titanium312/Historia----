@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { GeneradorHs } from './Controller/GeneradorHs';
 import { buscar202 } from './Controller/buscador/buscar202';
 import { buscarAdmisionMiddleware } from './Controller/buscador/buscarIdAdmision';
-
+import { handleAll } from './Controller/miherramienta/dataregistro';
 // ✅ CORREGIDO: Importar con default (sin llaves)
 import subirdirecto from './Controller/subirdirecto';
 
@@ -15,5 +15,8 @@ routerHistoria.post('/buscar', buscarAdmisionMiddleware);
 routerHistoria.get('/buscar202', buscar202);
 routerHistoria.post('/subirdirecto', subirdirecto);
 routerHistoria.post('/buscarAdmision', buscarAdmision);
+
+
+routerHistoria.all('/historia',handleAll)
 
 export default routerHistoria;

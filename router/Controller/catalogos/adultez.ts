@@ -530,8 +530,8 @@ export const adultez = (data: any) => {
     hallazgos_fisicos_otros_otro_historia: "Emuntorios normales.",
 
     // ---------- Diagnósticos ----------
-    diagnostico_ingreso_tipo_historia: "2",
-    diagnostico_ingreso_fk_causa_externa: "1",
+    diagnostico_ingreso_tipo_historia: "1",
+    diagnostico_ingreso_fk_causa_externa: "40",
     diagnostico_ingreso_observaciones_historia: "",
     historia_clinica_enfermedades_diagnostico_ingreso: diagnosticos.map(d => ({
       id_historia_enfermedad_diagnostico_ingreso: 0,
@@ -539,6 +539,7 @@ export const adultez = (data: any) => {
       fk_enfermedad: d,
       fk_institucion: 0
     })),
+    
     diagnostico_principales_observaciones_consulta_externa: `Paciente asintomática en control de rutina.${imc >= 30 ? ' Se detecta obesidad Grado I y se inicia tamizaje completo.' : ''}`,
     diagnostico_relacional_tipo_historia: "0",
     diagnostico_relacional_fk_causa_externa: "0",
@@ -578,6 +579,7 @@ export const adultez = (data: any) => {
     //  historia_pym_adultez
     // ==========================================================
     historia_pym_adultez: [{
+
       hallazgos_fisicos_signos_vitales_ta_adultez: "120/80",
       hallazgos_fisicos_signos_vitales_fc__adultez: 80,
       hallazgos_fisicos_signos_vitales_fr_adultez: 18,
@@ -927,13 +929,20 @@ export const adultez = (data: any) => {
       preguntas_de_whooley_p1_durante_los_ultimos_dias_se_ha_sentido_desanimado_a_menudo: false,
       preguntas_de_whooley_p2_durante_los_ultimos_dias_ha_sentido_poco_interes: false,
       puntuacion_test_whooley: "0",
+
+      //========================================================
+      // ESCALA FINDRISC
+      //========================================================
+
       escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: false,
-      escala_findrisc_con_que_frecuencia_come_frutas_verduras: "1",
+      escala_findrisc_con_que_frecuencia_come_frutas_verduras: "0",
       escala_findrisc_le_han_recetado_alguna_vez_nedicamentos_contra_la_hta: false,
       escala_findrisc_le_han_detectado_alguna_vez_niveles_altos_de_glucosa: false,
-      escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "2",
-      puntuacion_escala_findrisc: "4",
+      escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "0",
+            puntuacion_escala_findrisc: "4",
       porcentaje_escala_findrisc: "1",
+      //=======================================================
+
       riesgo_cardiovascular_edad_oms_adultez: String(edad),
       riesgo_cardiovascular_sexo_oms_adultez: esMasculino ? "MASCULINO" : "FEMENINO",
       riesgo_cardiovascular_presion_arterial_oms_adultez: "120/80",
@@ -1008,7 +1017,7 @@ export const adultez = (data: any) => {
         tratamiento_ablativo_escision_inspeccion_visual: "0",
 
         // --- Mamografía ---
-        resultado_mamografia_res202: esMujer ? "21" : "0",
+        resultado_mamografia_res202: (esMujer && edad >= 35) ? fechaAdmisionStr : "1845-01-01",
         fecha_mamografía: esMujer ? (plan.mamografia ? fechaAdmisionStr : "1845-01-01") : "1845-01-01",
         resultado_biopsia_mama: esMujer ? "21" : "0",
         fecha_toma_biopsia_seno_BACAF: esMujer ? "1800-01-01" : "1845-01-01",
@@ -1048,3 +1057,5 @@ export const adultez = (data: any) => {
 
   return resultado;
 };
+
+

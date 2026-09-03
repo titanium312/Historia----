@@ -1,245 +1,450 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SubirDirecto - Gestor de Admisiones</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SubirDirecto · Cyber Gestor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
     <style>
-        * {
+        /* ===== RESET & CYBER BASE ===== */
+        *,
+        *::before,
+        *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0f0f1a;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0f;
             display: flex;
             justify-content: center;
             align-items: flex-start;
             min-height: 100vh;
-            padding: 20px;
-            background-image: radial-gradient(ellipse at center, #1a1a2e 0%, #0f0f1a 100%);
-        }
-        .container {
-            background: #1a1a2e;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(74,108,247,0.1);
-            padding: 35px;
-            max-width: 900px;
-            width: 100%;
-            border: 1px solid rgba(255,255,255,0.05);
-            max-height: 98vh;
-            overflow-y: auto;
-        }
-        .container::-webkit-scrollbar {
-            width: 6px;
-        }
-        .container::-webkit-scrollbar-track {
-            background: #0f0f1a;
-            border-radius: 4px;
-        }
-        .container::-webkit-scrollbar-thumb {
-            background: #4a6cf7;
-            border-radius: 4px;
+            padding: 24px;
+            background-image:
+                linear-gradient(rgba(0, 240, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            position: relative;
         }
 
-        h1 {
-            font-size: 24px;
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 30%, rgba(0, 240, 255, 0.05), transparent 60%),
+                radial-gradient(circle at 80% 70%, rgba(255, 0, 160, 0.05), transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== SCROLLBAR CYBER ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00f0ff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #00f0ff44;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff00a0;
+            box-shadow: 0 0 15px #ff00a044;
+        }
+
+        /* ===== CONTAINER ===== */
+        .app-container {
+            max-width: 1000px;
+            width: 100%;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 32px 36px 28px;
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.05), inset 0 0 60px rgba(0, 240, 255, 0.02);
+            max-height: 98vh;
+            overflow-y: auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.06);
+            padding-bottom: 12px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #00f0ff, #ff00a0);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
             color: #fff;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .app-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #e0f0ff;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+        .app-title span {
+            color: #00f0ff;
+            text-shadow: 0 0 30px #00f0ff55;
+            font-weight: 700;
+        }
+        .badge-version {
+            background: rgba(0, 240, 255, 0.1);
+            color: #00f0ff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 16px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.05);
+        }
+        .server-indicator {
+            font-size: 13px;
+            color: #8892b0;
+            background: rgba(0, 240, 255, 0.03);
+            padding: 6px 18px;
+            border-radius: 40px;
+            border: 1px solid rgba(0, 240, 255, 0.08);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Inter', monospace;
+        }
+        .server-indicator .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00f0ff;
+            box-shadow: 0 0 15px #00f0ff, 0 0 30px #00f0ff44;
+            animation: pulse-cyber 1.5s infinite;
+        }
+        @keyframes pulse-cyber {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+                box-shadow: 0 0 15px #00f0ff, 0 0 30px #00f0ff44;
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+                box-shadow: 0 0 5px #00f0ff, 0 0 15px #00f0ff22;
+            }
+        }
+        .subtitle {
+            color: #6b7b9f;
+            font-size: 14px;
+            margin-top: 4px;
+            margin-bottom: 24px;
             display: flex;
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
-        }
-        h1 .badge {
-            background: #4a6cf7;
-            color: white;
-            font-size: 10px;
-            padding: 2px 12px;
-            border-radius: 20px;
-            font-weight: 400;
-        }
-        .subtitle {
-            color: #8892b0;
-            font-size: 14px;
-            margin-bottom: 25px;
-            margin-top: 4px;
+            border-left: 2px solid #00f0ff44;
+            padding-left: 14px;
         }
         .subtitle code {
-            background: #233;
-            padding: 2px 10px;
-            border-radius: 6px;
+            background: #0f0f1a;
+            padding: 2px 16px;
+            border-radius: 20px;
             font-size: 12px;
-            color: #64ffda;
+            color: #00f0ff;
+            font-weight: 500;
+            border: 1px solid #00f0ff22;
+            font-family: 'Inter', monospace;
         }
 
+        /* ===== CREDENTIALS ===== */
+        .credentials-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 540px) {
+            .credentials-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         .input-group {
-            margin-bottom: 14px;
+            margin-bottom: 6px;
         }
         .input-group label {
             display: block;
+            font-size: 11px;
             font-weight: 600;
-            font-size: 12px;
-            color: #8892b0;
-            margin-bottom: 4px;
+            color: #00f0ff;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px #00f0ff33;
         }
         .input-group input,
         .input-group textarea {
             width: 100%;
-            padding: 10px 14px;
-            border: 2px solid #233;
-            border-radius: 10px;
+            padding: 12px 18px;
+            border: 1.5px solid #1a1a2e;
+            border-radius: 14px;
             font-size: 14px;
-            background: #0f0f1a;
-            color: #fff;
-            transition: border-color 0.3s;
-            font-family: 'Consolas', monospace;
+            background: #0a0a14;
+            color: #eaf0ff;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
         }
         .input-group input:focus,
         .input-group textarea:focus {
-            border-color: #4a6cf7;
+            border-color: #00f0ff;
             outline: none;
-            box-shadow: 0 0 20px rgba(74,108,247,0.1);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.1), inset 0 0 20px rgba(0, 240, 255, 0.02);
+            background: #0c0c1a;
         }
         .input-group textarea {
-            min-height: 120px;
+            min-height: 100px;
             resize: vertical;
             font-size: 13px;
             line-height: 1.6;
         }
         .input-group .hint {
-            font-size: 11px;
-            color: #4a5568;
-            margin-top: 4px;
+            font-size: 12px;
+            color: #4d5a7a;
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
         }
         .input-group .hint strong {
             color: #8892b0;
+            font-weight: 500;
+        }
+        .input-group .hint .counter {
+            color: #ff00a0;
+            font-weight: 700;
+            text-shadow: 0 0 15px #ff00a044;
         }
 
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        @media (max-width: 550px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .btn-primary {
-            background: #4a6cf7;
-            color: white;
-            box-shadow: 0 4px 20px rgba(74,108,247,0.3);
-        }
-        .btn-primary:hover {
-            background: #5a7cf7;
-            transform: translateY(-2px);
-        }
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-        .btn-success {
-            background: #27ae60;
-            color: white;
-        }
-        .btn-success:hover {
-            background: #2ecc71;
-            transform: translateY(-2px);
-        }
-        .btn-danger {
-            background: #e74c3c;
-            color: white;
-        }
-        .btn-danger:hover {
-            background: #c0392b;
-            transform: translateY(-2px);
-        }
-        .btn-warning {
-            background: #f39c12;
-            color: white;
-        }
-        .btn-warning:hover {
-            background: #d68910;
-            transform: translateY(-2px);
-        }
-        .btn-secondary {
-            background: #233;
-            color: #8892b0;
-        }
-        .btn-secondary:hover {
-            background: #2a3a4a;
-        }
-        .btn-group {
+        /* ===== STATS ===== */
+        .stats {
             display: flex;
-            gap: 8px;
             flex-wrap: wrap;
-            margin: 15px 0;
+            gap: 10px 20px;
+            margin: 16px 0 12px;
+            padding: 10px 0;
+            border-top: 1px solid #1a1a2e;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .stat-item {
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 13px;
+            color: #6b7b9f;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+        .stat-item .num {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .stat-item .num.blue {
+            color: #00f0ff;
+            text-shadow: 0 0 20px #00f0ff55;
+        }
+        .stat-item .num.green {
+            color: #48bb78;
+            text-shadow: 0 0 20px #48bb7844;
+        }
+        .stat-item .num.yellow {
+            color: #f6ad55;
+            text-shadow: 0 0 20px #f6ad5544;
+        }
+        .stat-item .num.red {
+            color: #fc8181;
+            text-shadow: 0 0 20px #fc818144;
+        }
+        .stat-item .num.gray {
+            color: #4d5a7a;
         }
 
-        /* TABS */
+        /* ===== TABS ===== */
         .tabs {
             display: flex;
             gap: 4px;
-            margin: 15px 0 10px 0;
-            background: #0f0f1a;
-            border-radius: 10px;
+            background: #0a0a12;
+            border-radius: 16px;
             padding: 4px;
-            border: 1px solid #233;
+            border: 1px solid #1a1a2e;
+            margin: 14px 0 16px;
             flex-wrap: wrap;
         }
         .tab {
-            padding: 8px 16px;
-            border-radius: 8px;
+            padding: 8px 18px;
+            border-radius: 12px;
             border: none;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             background: transparent;
-            color: #4a5568;
+            color: #4d5a7a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Inter', sans-serif;
         }
         .tab:hover {
             background: #1a1a2e;
-            color: #8892b0;
+            color: #b0c0e0;
         }
         .tab.active {
-            background: #4a6cf7;
-            color: white;
-            box-shadow: 0 4px 15px rgba(74,108,247,0.3);
+            background: #00f0ff;
+            color: #0a0a12;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
         }
         .tab .count {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.1);
             padding: 0 8px;
-            border-radius: 10px;
+            border-radius: 20px;
             font-size: 11px;
-            margin-left: 4px;
+            font-weight: 700;
         }
         .tab.active .count {
-            background: rgba(255,255,255,0.2);
+            background: rgba(10, 10, 18, 0.2);
         }
 
-        /* LOADER */
+        /* ===== BUTTONS ===== */
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 6px 0 16px;
+        }
+        .btn {
+            padding: 11px 24px;
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #1a1a2e;
+            color: #b0c0e0;
+            border: 1px solid transparent;
+            font-family: 'Inter', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00f0ff, #0080ff);
+            color: #0a0a12;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 0 50px rgba(0, 240, 255, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        .btn-success {
+            background: #0a1a12;
+            color: #48bb78;
+            border-color: #48bb7844;
+        }
+        .btn-success:hover {
+            background: #0f2a1a;
+            border-color: #48bb78;
+            box-shadow: 0 0 30px #48bb7822;
+        }
+        .btn-danger {
+            background: #1a0a0a;
+            color: #fc8181;
+            border-color: #fc818144;
+        }
+        .btn-danger:hover {
+            background: #2a0f0f;
+            border-color: #fc8181;
+            box-shadow: 0 0 30px #fc818122;
+        }
+        .btn-secondary {
+            background: #111122;
+            color: #6b7b9f;
+            border-color: #2a2a44;
+        }
+        .btn-secondary:hover {
+            background: #1a1a33;
+            color: #b0c0e0;
+        }
+        .btn-warning {
+            background: #1a1a0a;
+            color: #f6ad55;
+            border-color: #f6ad5544;
+        }
+        .btn-warning:hover {
+            background: #2a2a12;
+            border-color: #f6ad55;
+            box-shadow: 0 0 30px #f6ad5522;
+        }
+
+        /* ===== LOADER ===== */
         .loader-container {
             display: none;
-            margin: 15px 0;
-            padding: 20px;
-            background: #0f0f1a;
-            border-radius: 12px;
-            border: 1px solid #233;
+            margin: 12px 0 16px;
+            padding: 18px 22px;
+            background: #0a0a14;
+            border-radius: 18px;
+            border: 1px solid #1a1a2e;
+            box-shadow: inset 0 0 40px rgba(0, 240, 255, 0.02);
         }
         .loader-container.active {
             display: block;
@@ -247,22 +452,20 @@
         .loader-wrapper {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 18px;
         }
         .loader-spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #233;
-            border-top: 3px solid #4a6cf7;
+            width: 44px;
+            height: 44px;
+            border: 3px solid #1a1a2e;
+            border-top: 3px solid #00f0ff;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.7s linear infinite;
             flex-shrink: 0;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
         }
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
+            to {
                 transform: rotate(360deg);
             }
         }
@@ -270,62 +473,66 @@
             flex: 1;
         }
         .loader-info .status {
-            color: #64ffda;
-            font-weight: 600;
+            color: #00f0ff;
+            font-weight: 700;
             font-size: 15px;
+            text-shadow: 0 0 20px #00f0ff33;
         }
         .loader-info .detail {
-            color: #8892b0;
+            color: #6b7b9f;
             font-size: 13px;
-            margin-top: 4px;
+            margin-top: 2px;
         }
         .loader-info .timer {
-            color: #4a6cf7;
+            color: #ff00a0;
             font-size: 13px;
             font-weight: 600;
-            margin-top: 6px;
+            margin-top: 4px;
+            text-shadow: 0 0 15px #ff00a033;
         }
         .progress-bar {
             width: 100%;
             height: 4px;
-            background: #233;
-            border-radius: 4px;
-            margin-top: 12px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            margin-top: 10px;
             overflow: hidden;
         }
         .progress-bar .fill {
             height: 100%;
-            background: linear-gradient(90deg, #4a6cf7, #64ffda);
+            background: linear-gradient(90deg, #00f0ff, #ff00a0);
             width: 0%;
-            border-radius: 4px;
-            transition: width 0.5s ease;
+            border-radius: 8px;
+            transition: width 0.4s ease;
+            box-shadow: 0 0 20px #00f0ff44;
         }
 
-        /* LOG */
+        /* ===== LOG ===== */
         .log-container {
-            background: #0f0f1a;
-            border-radius: 10px;
-            padding: 10px 14px;
-            margin-top: 12px;
-            font-size: 12px;
-            font-family: 'Consolas', monospace;
-            max-height: 180px;
+            background: #05050a;
+            border-radius: 14px;
+            padding: 12px 18px;
+            margin: 12px 0 14px;
+            font-size: 13px;
+            font-family: 'Inter', monospace;
+            max-height: 160px;
             overflow-y: auto;
             line-height: 1.8;
             border: 1px solid #1a1a2e;
-        }
-        .log-container::-webkit-scrollbar {
-            width: 4px;
-        }
-        .log-container::-webkit-scrollbar-track {
-            background: #0f0f1a;
-        }
-        .log-container::-webkit-scrollbar-thumb {
-            background: #4a6cf7;
-            border-radius: 4px;
+            color: #6b7b9f;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
         }
         .log-line {
-            padding: 1px 0;
+            padding: 2px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        }
+        .log-line .prefix {
+            opacity: 0.6;
+            font-weight: 400;
+            color: #00f0ff;
         }
         .log-success {
             color: #48bb78;
@@ -334,187 +541,54 @@
             color: #fc8181;
         }
         .log-info {
-            color: #63b3ed;
+            color: #00f0ff;
         }
         .log-warning {
             color: #f6ad55;
         }
         .log-gray {
-            color: #4a5568;
+            color: #4d5a7a;
         }
 
-        /* RESPONSE */
-        .response-box {
-            margin-top: 15px;
-            border-radius: 12px;
-            padding: 18px;
-            background: #0f0f1a;
-            border: 1px solid #233;
-            min-height: 60px;
-        }
-        .response-box .label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #4a5568;
-        }
-        .response-box .message {
-            font-size: 16px;
-            font-weight: 600;
-            color: #e6f1ff;
-            word-break: break-word;
-            margin-top: 4px;
-        }
-        .response-box .detail {
-            font-size: 13px;
-            color: #8892b0;
-            margin-top: 6px;
-            white-space: pre-wrap;
-            word-break: break-word;
-            max-height: 200px;
-            overflow-y: auto;
-            font-family: 'Consolas', monospace;
-            font-size: 12px;
-        }
-        .response-box .detail strong {
-            color: #64ffda;
-        }
-        .response-box.success {
-            border-left: 4px solid #48bb78;
-            background: #0f1f1a;
-        }
-        .response-box.error {
-            border-left: 4px solid #fc8181;
-            background: #1f0f0f;
-        }
-        .response-box.loading {
-            border-left: 4px solid #ecc94b;
-            background: #1a1a0f;
-        }
-        .response-box.info {
-            border-left: 4px solid #4a6cf7;
-            background: #0f0f1f;
-        }
-
-        .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        .dot-green {
-            background: #48bb78;
-        }
-        .dot-red {
-            background: #fc8181;
-        }
-        .dot-yellow {
-            background: #ecc94b;
-        }
-        .dot-blue {
-            background: #4a6cf7;
-        }
-        .dot-gray {
-            background: #4a5568;
-        }
-
-        .server-info {
-            background: #0f0f1a;
-            border-radius: 10px;
-            padding: 8px 14px;
-            font-size: 12px;
-            color: #4a5568;
-            margin-top: 10px;
+        /* ===== RESPONSE / TABLE ===== */
+        .table-wrapper {
+            margin-top: 12px;
+            border-radius: 16px;
             border: 1px solid #1a1a2e;
-            font-family: 'Consolas', monospace;
-        }
-        .server-info strong {
-            color: #64ffda;
-        }
-
-        /* STATS */
-        .stats {
-            display: flex;
-            gap: 12px;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-        .stats .stat {
-            background: #0f0f1a;
-            padding: 6px 14px;
-            border-radius: 8px;
-            border: 1px solid #233;
-            font-size: 13px;
-            color: #8892b0;
-        }
-        .stats .stat strong {
-            color: #fff;
-        }
-        .stats .stat .num {
-            font-weight: 700;
-            font-size: 16px;
-        }
-        .stats .stat .num.green {
-            color: #48bb78;
-        }
-        .stats .stat .num.red {
-            color: #fc8181;
-        }
-        .stats .stat .num.yellow {
-            color: #f6ad55;
-        }
-        .stats .stat .num.blue {
-            color: #4a6cf7;
-        }
-
-        /* TABLA DE RESULTADOS */
-        .resultados-container {
-            margin-top: 15px;
-            border: 1px solid #233;
-            border-radius: 10px;
             overflow: hidden;
-            background: #0f0f1a;
-            max-height: 300px;
+            background: #05050a;
+            max-height: 360px;
             overflow-y: auto;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
         }
-        .resultados-container::-webkit-scrollbar {
-            width: 4px;
-        }
-        .resultados-container::-webkit-scrollbar-track {
-            background: #0f0f1a;
-        }
-        .resultados-container::-webkit-scrollbar-thumb {
-            background: #4a6cf7;
-            border-radius: 4px;
-        }
-
         .resultados-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
         }
         .resultados-table th {
-            padding: 10px 12px;
+            padding: 12px 14px;
             text-align: left;
-            background: #1a1a2e;
-            color: #8892b0;
-            font-weight: 600;
+            background: #0a0a14;
+            color: #00f0ff;
+            font-weight: 700;
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid #233;
+            border-bottom: 2px solid #00f0ff22;
             position: sticky;
             top: 0;
             z-index: 2;
+            text-shadow: 0 0 10px #00f0ff33;
         }
         .resultados-table td {
-            padding: 8px 12px;
-            border-bottom: 1px solid #1a1a2e;
-            color: #e6f1ff;
+            padding: 10px 14px;
+            border-bottom: 1px solid #111122;
+            color: #eaf0ff;
+            vertical-align: middle;
         }
         .resultados-table tr:hover td {
-            background: #1a1a2e;
+            background: rgba(0, 240, 255, 0.02);
         }
         .resultados-table .status-exito {
             color: #48bb78;
@@ -526,809 +600,785 @@
             color: #fc8181;
         }
         .resultados-table .status-pendiente {
-            color: #4a5568;
+            color: #4d5a7a;
         }
-
         .badge-status {
-            padding: 2px 10px;
-            border-radius: 12px;
+            padding: 3px 14px;
+            border-radius: 30px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
+            display: inline-block;
+            letter-spacing: 0.3px;
         }
         .badge-exito {
             background: #0f2a1a;
             color: #48bb78;
+            border: 1px solid #48bb7822;
         }
         .badge-bloqueada {
             background: #2a1f0a;
             color: #f6ad55;
+            border: 1px solid #f6ad5522;
         }
         .badge-error {
             background: #2a0f0f;
             color: #fc8181;
+            border: 1px solid #fc818122;
         }
         .badge-pendiente {
-            background: #1a1a2e;
-            color: #4a5568;
+            background: #111122;
+            color: #4d5a7a;
+            border: 1px solid #2a2a44;
         }
-
         .btn-eliminar {
             background: none;
             border: none;
-            color: #4a5568;
+            color: #4d5a7a;
             cursor: pointer;
             font-size: 16px;
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 2px 8px;
+            border-radius: 6px;
             transition: all 0.2s;
         }
         .btn-eliminar:hover {
-            color: #fc8181;
-            background: #2a0f0f;
-        }
-
-        .flex {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .mt-10 {
-            margin-top: 10px;
-        }
-        .mb-10 {
-            margin-bottom: 10px;
-        }
-        .hidden {
-            display: none !important;
+            color: #ff00a0;
+            background: #1a0a12;
+            text-shadow: 0 0 20px #ff00a0;
         }
         .text-center {
             text-align: center;
         }
         .text-muted {
-            color: #4a5568;
+            color: #4d5a7a;
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+
+        /* Mensaje largo en tabla */
+        .msg-cell {
+            max-width: 250px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 12px;
+            line-height: 1.5;
+            padding: 8px 10px;
+            border-left: 1px solid #1a1a2e;
+            border-right: 1px solid #1a1a2e;
+        }
+        .msg-cell::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        /* ===== SERVER INFO ===== */
+        .server-info {
+            background: #0a0a14;
+            border-radius: 14px;
+            padding: 10px 18px;
+            font-size: 12px;
+            color: #4d5a7a;
+            margin-top: 14px;
+            border: 1px solid #1a1a2e;
+            font-family: 'Inter', monospace;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        .server-info strong {
+            color: #ff00a0;
+            font-weight: 600;
+            text-shadow: 0 0 15px #ff00a033;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 640px) {
+            .app-container {
+                padding: 20px 16px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .server-indicator {
+                font-size: 12px;
+                padding: 4px 12px;
+            }
+            .btn {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+            .stats {
+                gap: 4px 12px;
+            }
+            .stat-item {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+            .msg-cell {
+                max-width: 120px;
+            }
+        }
+        @media (max-width: 480px) {
+            .credentials-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>
-        🚀 SubirDirecto
-        <span class="badge">Gestor</span>
-    </h1>
-    <div class="subtitle">
-        Login automático + Clasifica resultados + Elimina enviados
-        <code id="serverDisplay">detectando...</code>
-    </div>
+    <div class="app-container">
 
-    <!-- Credenciales -->
-    <div class="grid-2">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo-icon">⚡</div>
+                <div class="app-title">Subir<span>Directo</span></div>
+                <span class="badge-version">v2 · Cyber</span>
+            </div>
+            <div class="server-indicator">
+                <span class="dot"></span>
+                <span id="serverDisplay">https://historia-olive-kappa.vercel.app</span>
+            </div>
+        </div>
+        <div class="subtitle">
+            <span>🔗 Login automático · Clasifica · Reenvía errores</span>
+            <code id="serverDetected">https://historia-olive-kappa.vercel.app</code>
+        </div>
+
+        <!-- CREDENTIALS -->
+        <div class="credentials-grid">
+            <div class="input-group">
+                <label>👤 Usuario</label>
+                <input type="text" id="loginUser" value="" placeholder="Ingresa usuario..." />
+            </div>
+            <div class="input-group">
+                <label>🔒 Contraseña</label>
+                <input type="password" id="loginPass" value="" placeholder="Ingresa contraseña..." />
+            </div>
+        </div>
+
+        <!-- LISTA -->
         <div class="input-group">
-            <label>👤 Usuario</label>
-            <input type="text" id="loginUser" value="">
+            <label>📋 Lista de Números de Admisión</label>
+            <textarea id="listaAdmisiones" placeholder="Pega aquí los números… ej: 813312, 813313, 813314"></textarea>
+            <div class="hint">
+                <span><strong>Separadores:</strong> coma · punto · espacio · salto de línea</span>
+                <span class="counter" id="contadorAdmisiones">0 números</span>
+            </div>
         </div>
-        <div class="input-group">
-            <label>🔒 Contraseña</label>
-            <input type="password" id="loginPass" value="">
+
+        <!-- STATS -->
+        <div class="stats" id="statsContainer">
+            <div class="stat-item">📊 Total: <span class="num blue" id="totalNumeros">0</span></div>
+            <div class="stat-item">✅ Éxitos: <span class="num green" id="exitosNumeros">0</span></div>
+            <div class="stat-item">⛔ Bloqueadas: <span class="num yellow" id="bloqueadasNumeros">0</span></div>
+            <div class="stat-item">❌ Fallos: <span class="num red" id="fallosNumeros">0</span></div>
+            <div class="stat-item">⏳ Pendientes: <span class="num gray" id="pendientesNumeros">0</span></div>
         </div>
-    </div>
 
-    <!-- Textarea -->
-    <div class="input-group">
-        <label>📋 Lista de Números de Admisión</label>
-        <textarea id="listaAdmisiones" placeholder="Pega aquí los números de admisión&#10;Ejemplo: 813312, 813313, 813314"></textarea>
-        <div class="hint">
-            <strong>Separadores:</strong> coma · punto · espacio · guión · salto de línea
-            <span id="contadorAdmisiones" style="float:right;color:#4a6cf7;">0 números</span>
+        <!-- TABS -->
+        <div class="tabs" id="tabsContainer">
+            <button class="tab active" data-filtro="todos" onclick="filtrarTabla('todos')">
+                📋 Todos <span class="count" id="countTodos">0</span>
+            </button>
+            <button class="tab" data-filtro="pendiente" onclick="filtrarTabla('pendiente')">
+                ⏳ Pendientes <span class="count" id="countPendientes">0</span>
+            </button>
+            <button class="tab" data-filtro="exito" onclick="filtrarTabla('exito')">
+                ✅ Éxitos <span class="count" id="countExitos">0</span>
+            </button>
+            <button class="tab" data-filtro="bloqueada" onclick="filtrarTabla('bloqueada')">
+                ⛔ Bloqueadas <span class="count" id="countBloqueadas">0</span>
+            </button>
+            <button class="tab" data-filtro="error" onclick="filtrarTabla('error')">
+                ❌ Errores <span class="count" id="countErrores">0</span>
+            </button>
         </div>
-    </div>
 
-    <!-- Stats -->
-    <div class="stats" id="statsContainer">
-        <div class="stat">📊 Total: <strong class="num blue" id="totalNumeros">0</strong></div>
-        <div class="stat">✅ Éxitos: <strong class="num green" id="exitosNumeros">0</strong></div>
-        <div class="stat">⛔ Bloqueadas: <strong class="num yellow" id="bloqueadasNumeros">0</strong></div>
-        <div class="stat">❌ Fallos: <strong class="num red" id="fallosNumeros">0</strong></div>
-        <div class="stat">⏳ Pendientes: <strong class="num" id="pendientesNumeros" style="color:#4a5568;">0</strong></div>
-    </div>
+        <!-- BUTTONS -->
+        <div class="btn-group">
+            <button class="btn btn-primary" id="btnEnviar" onclick="procesarLista()">🚀 Enviar Pendientes</button>
+            <button class="btn btn-success" onclick="parsearLista()">🔍 Detectar</button>
+            <button class="btn btn-danger" onclick="eliminarEnviados()">🗑️ Eliminar Éxitos</button>
+            <button class="btn btn-secondary" onclick="limpiarTodo()">🧹 Limpiar</button>
+        </div>
 
-    <!-- Tabs de filtro -->
-    <div class="tabs" id="tabsContainer">
-        <button class="tab active" data-filtro="todos" onclick="filtrarTabla('todos')">
-            📋 Todos <span class="count" id="countTodos">0</span>
-        </button>
-        <button class="tab" data-filtro="pendiente" onclick="filtrarTabla('pendiente')">
-            ⏳ Pendientes <span class="count" id="countPendientes">0</span>
-        </button>
-        <button class="tab" data-filtro="exito" onclick="filtrarTabla('exito')">
-            ✅ Éxitos <span class="count" id="countExitos">0</span>
-        </button>
-        <button class="tab" data-filtro="bloqueada" onclick="filtrarTabla('bloqueada')">
-            ⛔ Bloqueadas <span class="count" id="countBloqueadas">0</span>
-        </button>
-        <button class="tab" data-filtro="error" onclick="filtrarTabla('error')">
-            ❌ Errores <span class="count" id="countErrores">0</span>
-        </button>
-    </div>
-
-    <!-- Botones -->
-    <div class="btn-group">
-        <button class="btn btn-primary" id="btnEnviar" onclick="procesarLista()">🚀 Enviar Pendientes</button>
-        <button class="btn btn-success" onclick="parsearLista()">🔍 Detectar</button>
-        <button class="btn btn-danger" onclick="eliminarEnviados()">🗑️ Eliminar Éxitos</button>
-        <button class="btn btn-warning" onclick="cargarEjemplo()">📝 Ejemplo</button>
-        <button class="btn btn-secondary" onclick="limpiarTodo()">🧹 Limpiar</button>
-    </div>
-
-    <!-- LOADER -->
-    <div class="loader-container" id="loaderContainer">
-        <div class="loader-wrapper">
-            <div class="loader-spinner"></div>
-            <div class="loader-info">
-                <div class="status" id="loaderStatus">⏳ Procesando...</div>
-                <div class="detail" id="loaderDetail">El servidor puede tardar en responder</div>
-                <div class="timer" id="loaderTimer">⏱️ Esperando: 0s</div>
-                <div class="progress-bar">
-                    <div class="fill" id="progressFill"></div>
+        <!-- LOADER -->
+        <div class="loader-container" id="loaderContainer">
+            <div class="loader-wrapper">
+                <div class="loader-spinner"></div>
+                <div class="loader-info">
+                    <div class="status" id="loaderStatus">⏳ Procesando…</div>
+                    <div class="detail" id="loaderDetail">El servidor puede tardar en responder</div>
+                    <div class="timer" id="loaderTimer">⏱️ Esperando: 0s</div>
+                    <div class="progress-bar">
+                        <div class="fill" id="progressFill"></div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- LOG -->
+        <div class="log-container" id="logContainer">
+            <div class="log-line log-gray"><span class="prefix">⏣</span> Sistema listo. Pega una lista y presiona “Enviar Pendientes”</div>
+            <div class="log-line log-gray"><span class="prefix">⏣</span> Ctrl+Enter para ejecutar</div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-wrapper" id="resultadosContainer">
+            <table class="resultados-table" id="resultadosTable">
+                <thead>
+                    <tr>
+                        <th style="width:32px;">#</th>
+                        <th>N° Admisión</th>
+                        <th>Estado</th>
+                        <th>ID Historia</th>
+                        <th style="min-width:200px;">Mensaje Retorno</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="resultadosBody">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted" style="padding:22px;">⌨️ No hay resultados aún</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- SERVER INFO -->
+        <div class="server-info">
+            <strong>⚡ Servidor:</strong> <span id="serverDetected2">https://historia-olive-kappa.vercel.app</span>
+        </div>
     </div>
 
-    <!-- LOG -->
-    <div class="log-container" id="logContainer">
-        <div class="log-line log-gray">🟢 Listo. Pega una lista y presiona "Enviar Pendientes"</div>
-    </div>
+    <script>
+        // ============================================================
+        //  STATE
+        // ============================================================
+        let tokSesionActual = null;
+        let servidorBase = '';
+        let resultados = [];
+        let filtroActual = 'todos';
+        let timerInterval = null;
+        let segundosEspera = 0;
+        let procesando = false;
+        let numerosOriginales = [];
 
-    <!-- TABLA DE RESULTADOS -->
-    <div class="resultados-container" id="resultadosContainer">
-        <table class="resultados-table" id="resultadosTable">
-            <thead>
-                <tr>
-                    <th style="width:30px;">#</th>
-                    <th>N° Admisión</th>
-                    <th>Estado</th>
-                    <th>ID Historia</th>
-                    <th>Mensaje</th>
-                    <th style="width:40px;"></th>
-                </tr>
-            </thead>
-            <tbody id="resultadosBody">
-                <tr>
-                    <td colspan="6" class="text-center text-muted" style="padding:20px;">No hay resultados aún</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+        // ============================================================
+        //  DOM REFS
+        // ============================================================
+        const logContainer = document.getElementById('logContainer');
+        const loaderContainer = document.getElementById('loaderContainer');
+        const loaderStatus = document.getElementById('loaderStatus');
+        const loaderDetail = document.getElementById('loaderDetail');
+        const loaderTimer = document.getElementById('loaderTimer');
+        const progressFill = document.getElementById('progressFill');
+        const btn = document.getElementById('btnEnviar');
 
-    <!-- Servidor -->
-    <div class="server-info" id="serverInfo">
-        <strong>📍 Servidor:</strong> <span id="serverDetected">cargando...</span>
-    </div>
-</div>
+        const totalNumeros = document.getElementById('totalNumeros');
+        const exitosNumeros = document.getElementById('exitosNumeros');
+        const bloqueadasNumeros = document.getElementById('bloqueadasNumeros');
+        const fallosNumeros = document.getElementById('fallosNumeros');
+        const pendientesNumeros = document.getElementById('pendientesNumeros');
+        const contadorAdmisiones = document.getElementById('contadorAdmisiones');
 
-<script>
-    // ============================================================
-    // VARIABLES
-    // ============================================================
-    let tokSesionActual = null;
-    let servidorBase = '';
-    let resultados = [];
-    let filtroActual = 'todos';
-    let timerInterval = null;
-    let segundosEspera = 0;
-    let procesando = false;
-    let numerosOriginales = [];
-
-    // ============================================================
-    // DOM REFS
-    // ============================================================
-    const responseBox = document.getElementById('responseBox');
-    const mensajePrincipal = document.getElementById('mensajePrincipal');
-    const detallesAdicionales = document.getElementById('detallesAdicionales');
-    const btn = document.getElementById('btnEnviar');
-    const logContainer = document.getElementById('logContainer');
-    const loaderContainer = document.getElementById('loaderContainer');
-    const loaderStatus = document.getElementById('loaderStatus');
-    const loaderDetail = document.getElementById('loaderDetail');
-    const loaderTimer = document.getElementById('loaderTimer');
-    const progressFill = document.getElementById('progressFill');
-    const serverDisplay = document.getElementById('serverDisplay');
-    const serverDetected = document.getElementById('serverDetected');
-
-    const totalNumeros = document.getElementById('totalNumeros');
-    const exitosNumeros = document.getElementById('exitosNumeros');
-    const bloqueadasNumeros = document.getElementById('bloqueadasNumeros');
-    const fallosNumeros = document.getElementById('fallosNumeros');
-    const pendientesNumeros = document.getElementById('pendientesNumeros');
-    const contadorAdmisiones = document.getElementById('contadorAdmisiones');
-
-    // ============================================================
-    // DETECTAR SERVIDOR
-    // ============================================================
-    function detectarServidor() {
-        servidorBase = window.location.origin;
-        serverDisplay.textContent = servidorBase;
-        serverDetected.textContent = servidorBase;
-        return servidorBase;
-    }
-
-    // ============================================================
-    // LOG
-    // ============================================================
-    function addLog(mensaje, tipo = 'info') {
-        const colors = {
-            success: 'log-success',
-            error: 'log-error',
-            info: 'log-info',
-            warning: 'log-warning',
-            gray: 'log-gray'
-        };
-        const icons = {
-            success: '✅',
-            error: '❌',
-            info: 'ℹ️',
-            warning: '⚠️',
-            gray: '•'
-        };
-        const line = document.createElement('div');
-        line.className = `log-line ${colors[tipo] || 'log-gray'}`;
-        line.textContent = `${icons[tipo] || '•'} ${mensaje}`;
-        logContainer.appendChild(line);
-        logContainer.scrollTop = logContainer.scrollHeight;
-        while (logContainer.children.length > 100) {
-            logContainer.removeChild(logContainer.firstChild);
+        // ============================================================
+        //  SERVER DETECTION
+        // ============================================================
+        function detectarServidor() {
+            servidorBase = window.location.origin;
+            document.getElementById('serverDisplay').textContent = servidorBase;
+            document.getElementById('serverDetected').textContent = servidorBase;
+            document.getElementById('serverDetected2').textContent = servidorBase;
+            return servidorBase;
         }
-    }
 
-    // ============================================================
-    // LOADER
-    // ============================================================
-    function mostrarLoader(activo, status, detail, progress = 0) {
-        if (activo) {
-            loaderContainer.classList.add('active');
+        // ============================================================
+        //  LOG
+        // ============================================================
+        function addLog(mensaje, tipo = 'info') {
+            const colorMap = {
+                success: 'log-success',
+                error: 'log-error',
+                info: 'log-info',
+                warning: 'log-warning',
+                gray: 'log-gray'
+            };
+            const iconMap = {
+                success: '✓',
+                error: '✗',
+                info: '▶',
+                warning: '⚠',
+                gray: '●'
+            };
+            const line = document.createElement('div');
+            line.className = `log-line ${colorMap[tipo] || 'log-gray'}`;
+            line.innerHTML = `<span class="prefix">${iconMap[tipo] || '●'}</span> ${mensaje}`;
+            logContainer.appendChild(line);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        // ============================================================
+        //  LOADER
+        // ============================================================
+        function mostrarLoader(activo, status, detail, progress = 0) {
+            if (activo) {
+                loaderContainer.classList.add('active');
+                if (status) loaderStatus.textContent = status;
+                if (detail) loaderDetail.textContent = detail;
+                segundosEspera = 0;
+                loaderTimer.textContent = '⏱️ Esperando: 0s';
+                progressFill.style.width = `${Math.min(progress, 100)}%`;
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    segundosEspera++;
+                    loaderTimer.textContent = `⏱️ Esperando: ${segundosEspera}s`;
+                    if (segundosEspera > 10 && segundosEspera % 5 === 0) {
+                        loaderDetail.textContent = `⏳ El servidor puede estar despertando… (${segundosEspera}s)`;
+                    }
+                }, 1000);
+            } else {
+                loaderContainer.classList.remove('active');
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+            }
+        }
+
+        function actualizarLoader(status, detail, progress = 0) {
             if (status) loaderStatus.textContent = status;
             if (detail) loaderDetail.textContent = detail;
-            segundosEspera = 0;
-            loaderTimer.textContent = '⏱️ Esperando: 0s';
             progressFill.style.width = `${Math.min(progress, 100)}%`;
-            if (timerInterval) clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                segundosEspera++;
-                loaderTimer.textContent = `⏱️ Esperando: ${segundosEspera}s`;
-                if (segundosEspera > 10 && segundosEspera % 5 === 0) {
-                    loaderDetail.textContent = `⏳ El servidor puede estar despertando... (${segundosEspera}s)`;
+        }
+
+        // ============================================================
+        //  PARSEAR LISTA
+        // ============================================================
+        function parsearLista() {
+            const texto = document.getElementById('listaAdmisiones').value;
+            const numeros = texto
+                .split(/[,.\s\n\r;—-]+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0 && /^\d+$/.test(s))
+                .map(s => parseInt(s, 10));
+
+            const unicos = [];
+            const seen = new Set();
+            for (const num of numeros) {
+                if (!seen.has(num)) {
+                    seen.add(num);
+                    unicos.push(num);
                 }
-            }, 1000);
-        } else {
-            loaderContainer.classList.remove('active');
+            }
+
+            numerosOriginales = unicos;
+            actualizarStats();
+            addLog(`🔍 ${numerosOriginales.length} números detectados (${numeros.length} total, ${numeros.length - numerosOriginales.length} duplicados)`, 'info');
+            return numerosOriginales;
+        }
+
+        // ============================================================
+        //  CLASIFICAR RESULTADO
+        // ============================================================
+        function clasificarResultado(numero, respuesta) {
+            const mensaje = respuesta?.data?.respuestaSaludPlus?.mensajeRetorno || '';
+            const idHistoria = respuesta?.data?.respuestaSaludPlus?.valorRetorno || 'N/A';
+            // Extraer el mensaje completo para mostrarlo siempre
+            const mensajeCompleto = mensaje || (respuesta?.data?.respuestaSaludPlus?.mensajeRetorno || '');
+
+            if (mensajeCompleto.includes('bloqueada') || mensajeCompleto.includes('Bloqueada')) {
+                return { numero, estado: 'bloqueada', idHistoria, mensaje: mensajeCompleto || 'Historia bloqueada',
+                    raw: respuesta };
+            }
+            if (respuesta?.ok && idHistoria !== 'N/A') {
+                return { numero, estado: 'exito', idHistoria, mensaje: mensajeCompleto || 'Actualizada correctamente',
+                    raw: respuesta };
+            }
+            if (respuesta?.ok && mensajeCompleto.includes('actualizo')) {
+                return { numero, estado: 'exito', idHistoria, mensaje: mensajeCompleto || 'Actualizada correctamente',
+                    raw: respuesta };
+            }
+            return { numero, estado: 'error', idHistoria, mensaje: mensajeCompleto || `Error ${respuesta?.status || '500'}`,
+                raw: respuesta };
+        }
+
+        // ============================================================
+        //  ACTUALIZAR STATS Y TABLA
+        // ============================================================
+        function actualizarStats() {
+            const total = numerosOriginales.length;
+            const exitos = resultados.filter(r => r.estado === 'exito').length;
+            const bloqueadas = resultados.filter(r => r.estado === 'bloqueada').length;
+            const errores = resultados.filter(r => r.estado === 'error').length;
+            const pendientes = total - resultados.length;
+
+            totalNumeros.textContent = total;
+            exitosNumeros.textContent = exitos;
+            bloqueadasNumeros.textContent = bloqueadas;
+            fallosNumeros.textContent = errores;
+            pendientesNumeros.textContent = pendientes;
+            contadorAdmisiones.textContent = `${total} números`;
+
+            document.getElementById('countTodos').textContent = total;
+            document.getElementById('countPendientes').textContent = pendientes;
+            document.getElementById('countExitos').textContent = exitos;
+            document.getElementById('countBloqueadas').textContent = bloqueadas;
+            document.getElementById('countErrores').textContent = errores;
+
+            renderizarTabla();
+        }
+
+        // ============================================================
+        //  RENDERIZAR TABLA (con mensaje completo visible)
+        // ============================================================
+        function renderizarTabla() {
+            const tbody = document.getElementById('resultadosBody');
+            const resultadoMap = {};
+            for (const r of resultados) {
+                resultadoMap[r.numero] = r;
+            }
+
+            const filas = numerosOriginales.map(num => {
+                if (resultadoMap[num]) return resultadoMap[num];
+                return { numero: num, estado: 'pendiente', idHistoria: 'N/A', mensaje: 'Pendiente de envío', raw: null };
+            });
+
+            const datosFiltrados = filtroActual === 'todos' ? filas : filas.filter(f => f.estado === filtroActual);
+
+            if (datosFiltrados.length === 0) {
+                tbody.innerHTML =
+                    `<tr><td colspan="6" class="text-center text-muted" style="padding:20px;">⌨️ No hay resultados para este filtro</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < datosFiltrados.length; i++) {
+                const f = datosFiltrados[i];
+                const estadoClass = f.estado === 'exito' ? 'status-exito' :
+                    f.estado === 'bloqueada' ? 'status-bloqueada' :
+                    f.estado === 'error' ? 'status-error' : 'status-pendiente';
+                const badgeClass = f.estado === 'exito' ? 'badge-exito' :
+                    f.estado === 'bloqueada' ? 'badge-bloqueada' :
+                    f.estado === 'error' ? 'badge-error' : 'badge-pendiente';
+                const label = f.estado === 'exito' ? '✅ Éxito' :
+                    f.estado === 'bloqueada' ? '⛔ Bloqueada' :
+                    f.estado === 'error' ? '❌ Error' : '⏳ Pendiente';
+                const puedeEliminar = ['exito', 'bloqueada', 'error'].includes(f.estado);
+
+                // Limpieza del mensaje para mostrarlo bonito, pero completo
+                const msg = f.mensaje || '-';
+                const msgEscaped = msg.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                html += `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td><strong>${f.numero}</strong></td>
+                            <td><span class="badge-status ${badgeClass}">${label}</span></td>
+                            <td>${f.idHistoria || 'N/A'}</td>
+                            <td class="msg-cell ${estadoClass}" title="${msgEscaped}">${msgEscaped}</td>
+                            <td>
+                                ${puedeEliminar ? `<button class="btn-eliminar" onclick="eliminarFila(${f.numero})" title="Eliminar">✕</button>` : ''}
+                            </td>
+                        </tr>
+                    `;
+            }
+            tbody.innerHTML = html;
+        }
+
+        // ============================================================
+        //  FILTRAR TABLA
+        // ============================================================
+        function filtrarTabla(filtro) {
+            filtroActual = filtro;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[data-filtro="${filtro}"]`)?.classList.add('active');
+            renderizarTabla();
+        }
+
+        // ============================================================
+        //  ELIMINAR FILA
+        // ============================================================
+        function eliminarFila(numero) {
+            const idx = numerosOriginales.indexOf(numero);
+            if (idx !== -1) numerosOriginales.splice(idx, 1);
+            const rIdx = resultados.findIndex(r => r.numero === numero);
+            if (rIdx !== -1) resultados.splice(rIdx, 1);
+            document.getElementById('listaAdmisiones').value = numerosOriginales.join(', ');
+            actualizarStats();
+            addLog(`🗑️ Eliminado ${numero}`, 'warning');
+        }
+
+        // ============================================================
+        //  ELIMINAR ENVIADOS (éxitos) -> Los errores quedan pendientes
+        // ============================================================
+        function eliminarEnviados() {
+            const exitos = resultados.filter(r => r.estado === 'exito');
+            if (exitos.length === 0) {
+                addLog('⚠️ No hay éxitos para eliminar', 'warning');
+                return;
+            }
+            if (!confirm(`🗑️ ¿Eliminar ${exitos.length} números exitosos?\n\nLos errores y bloqueados quedarán como PENDIENTES para reenviar.`)) return;
+
+            // 1. Eliminar solo los exitosos de la lista original
+            const setExitos = new Set(exitos.map(r => r.numero));
+            numerosOriginales = numerosOriginales.filter(n => !setExitos.has(n));
+
+            // 2. Vaciar TODOS los resultados para que los no-exitosos pasen a "pendientes"
+            resultados = [];
+
+            // 3. Actualizar textarea
+            document.getElementById('listaAdmisiones').value = numerosOriginales.join(', ');
+
+            // 4. LIMPIAR LA CONSOLA (log) y poner mensajes nuevos
+            logContainer.innerHTML = '';
+            addLog(`🗑️ Eliminados ${exitos.length} éxitos.`, 'success');
+            addLog('📋 Los números con error o bloqueada ahora están PENDIENTES. Puedes reenviarlos.', 'info');
+
+            // 5. Actualizar estadísticas
+            actualizarStats();
+        }
+
+        // ============================================================
+        //  LOGIN
+        // ============================================================
+        async function hacerLogin() {
+            const username = document.getElementById('loginUser').value.trim();
+            const password = document.getElementById('loginPass').value.trim();
+
+            if (!username || !password) {
+                addLog('Usuario y contraseña son obligatorios', 'error');
+                return null;
+            }
+
+            addLog(`🔑 Login como "${username}"…`, 'info');
+            actualizarLoader('🔑 Conectando…', 'Autenticando en el servidor');
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+                const response = await fetch('https://total-oeyx.onrender.com/Loguin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    addLog(`Login falló: ${response.status}`, 'error');
+                    return null;
+                }
+
+                const data = await response.json();
+
+                if (data.tokSesion) {
+                    tokSesionActual = data.tokSesion;
+                    addLog(`✅ Login exitoso (${tokSesionActual.length} caracteres)`, 'success');
+                    return data;
+                } else {
+                    addLog('⚠️ No se recibió tokSesion', 'error');
+                    return null;
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    addLog('⏱️ Timeout en login (45s)', 'warning');
+                } else {
+                    addLog(`❌ Error: ${error.message}`, 'error');
+                }
+                return null;
+            }
+        }
+
+        // ============================================================
+        //  ENVIAR UNO
+        // ============================================================
+        async function enviarUno(token, numeroAdmision, index, total) {
+            const url = `${servidorBase}/subirdirecto`;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        numeroAdmision: numeroAdmision.toString()
+                    }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                const textResponse = await response.text();
+                let data;
+                try { data = JSON.parse(textResponse); } catch { data = { raw: textResponse }; }
+
+                return {
+                    status: response.status,
+                    ok: response.ok,
+                    data,
+                    raw: textResponse,
+                    numero: numeroAdmision,
+                    index,
+                    total
+                };
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    addLog(`⏱️ Timeout en ${numeroAdmision} (60s)`, 'warning');
+                } else {
+                    addLog(`❌ Error en ${numeroAdmision}: ${error.message}`, 'error');
+                }
+                return {
+                    status: 0,
+                    ok: false,
+                    data: { error: error.message },
+                    numero: numeroAdmision,
+                    index,
+                    total
+                };
+            }
+        }
+
+        // ============================================================
+        //  PROCESAR LISTA
+        // ============================================================
+        async function procesarLista() {
+            if (procesando) {
+                addLog('⚠️ Ya hay un proceso en ejecución', 'warning');
+                return;
+            }
+
+            const numeros = parsearLista();
+            if (numeros.length === 0) {
+                addLog('⚠️ No se detectaron números válidos', 'error');
+                return;
+            }
+
+            const numerosProcesados = new Set(resultados.map(r => r.numero));
+            const pendientes = numeros.filter(n => !numerosProcesados.has(n));
+
+            if (pendientes.length === 0) {
+                addLog('✅ Todos los números ya fueron procesados', 'success');
+                return;
+            }
+
+            addLog(`📋 ${pendientes.length} números pendientes de ${numeros.length} total`, 'info');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Procesando…';
+            procesando = true;
+            mostrarLoader(true, '🚀 Iniciando proceso…', `Preparando ${pendientes.length} números`);
+
+            const loginData = await hacerLogin();
+            if (!loginData || !tokSesionActual) {
+                mostrarLoader(false);
+                addLog('❌ Login falló', 'error');
+                btn.disabled = false;
+                btn.textContent = '🚀 Enviar Pendientes';
+                procesando = false;
+                return;
+            }
+
+            for (let i = 0; i < pendientes.length; i++) {
+                const num = pendientes[i];
+                const progreso = ((i + 1) / pendientes.length) * 100;
+                actualizarLoader(
+                    `📤 Enviando ${i+1}/${pendientes.length}: ${num}`,
+                    `Progreso: ${Math.round(progreso)}%`,
+                    progreso
+                );
+                addLog(`📤 Enviando ${num} (${i+1}/${pendientes.length})…`, 'info');
+
+                const respuesta = await enviarUno(tokSesionActual, num, i, pendientes.length);
+                const clasificado = clasificarResultado(num, respuesta);
+                resultados.push(clasificado);
+
+                const icono = clasificado.estado === 'exito' ? '✅' :
+                    clasificado.estado === 'bloqueada' ? '⛔' : '❌';
+                const detalle = clasificado.idHistoria !== 'N/A' ? `ID: ${clasificado.idHistoria}` : '';
+                addLog(`${icono} ${num} → ${clasificado.mensaje} ${detalle}`, clasificado.estado === 'exito' ? 'success' :
+                    'warning');
+
+                actualizarStats();
+
+                if (i < pendientes.length - 1) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+
+            mostrarLoader(false);
+            const exitos = resultados.filter(r => r.estado === 'exito').length;
+            const bloqueadas = resultados.filter(r => r.estado === 'bloqueada').length;
+            const errores = resultados.filter(r => r.estado === 'error').length;
+            const pendientesRestantes = numerosOriginales.length - resultados.length;
+            addLog(`📊 Resumen: ✅ ${exitos} éxitos | ⛔ ${bloqueadas} bloqueadas | ❌ ${errores} errores | ⏳ ${pendientesRestantes} pendientes`, 'success');
+
+            btn.disabled = false;
+            btn.textContent = '🚀 Enviar Pendientes';
+            procesando = false;
+        }
+
+        // ============================================================
+        //  LIMPIAR TODO
+        // ============================================================
+        function limpiarTodo() {
+            document.getElementById('listaAdmisiones').value = '';
+            numerosOriginales = [];
+            resultados = [];
+            actualizarStats();
+            logContainer.innerHTML = `<div class="log-line log-gray"><span class="prefix">⏣</span> Sistema reiniciado. Listo.</div>`;
+            mostrarLoader(false);
+            btn.disabled = false;
+            btn.textContent = '🚀 Enviar Pendientes';
+            procesando = false;
             if (timerInterval) {
                 clearInterval(timerInterval);
                 timerInterval = null;
             }
-        }
-    }
-
-    function actualizarLoader(status, detail, progress = 0) {
-        if (status) loaderStatus.textContent = status;
-        if (detail) loaderDetail.textContent = detail;
-        progressFill.style.width = `${Math.min(progress, 100)}%`;
-    }
-
-    // ============================================================
-    // PARSEAR LISTA
-    // ============================================================
-    function parsearLista() {
-        const texto = document.getElementById('listaAdmisiones').value;
-        const numeros = texto
-            .split(/[,.\s\n\r;—-]+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 0 && /^\d+$/.test(s))
-            .map(s => parseInt(s, 10));
-
-        const unicos = [];
-        const seen = new Set();
-        for (const num of numeros) {
-            if (!seen.has(num)) {
-                seen.add(num);
-                unicos.push(num);
-            }
+            document.getElementById('resultadosBody').innerHTML =
+                `<tr><td colspan="6" class="text-center text-muted" style="padding:20px;">⌨️ No hay resultados aún</td></tr>`;
+            addLog('🧹 Todo limpiado', 'info');
         }
 
-        numerosOriginales = unicos;
-        actualizarStats();
-        addLog(`🔍 ${numerosOriginales.length} números detectados (${numeros.length} total, ${numeros.length - numerosOriginales.length} duplicados)`, 'info');
-        return numerosOriginales;
-    }
-
-    // ============================================================
-    // CLASIFICAR RESULTADO
-    // ============================================================
-    function clasificarResultado(numero, respuesta) {
-        const mensaje = respuesta?.data?.respuestaSaludPlus?.mensajeRetorno || '';
-        const idHistoria = respuesta?.data?.respuestaSaludPlus?.valorRetorno || 'N/A';
-
-        // Verificar si es bloqueada
-        if (mensaje.includes('bloqueada') || mensaje.includes('Bloqueada')) {
-            return {
-                numero: numero,
-                estado: 'bloqueada',
-                idHistoria: idHistoria,
-                mensaje: mensaje || 'Historia bloqueada',
-                raw: respuesta
-            };
-        }
-
-        // Verificar si es éxito
-        if (respuesta?.ok && idHistoria !== 'N/A') {
-            return {
-                numero: numero,
-                estado: 'exito',
-                idHistoria: idHistoria,
-                mensaje: mensaje || 'Actualizada correctamente',
-                raw: respuesta
-            };
-        }
-
-        // Si fue exitoso pero sin ID
-        if (respuesta?.ok && mensaje.includes('actualizo')) {
-            return {
-                numero: numero,
-                estado: 'exito',
-                idHistoria: idHistoria,
-                mensaje: mensaje || 'Actualizada correctamente',
-                raw: respuesta
-            };
-        }
-
-        // Error
-        return {
-            numero: numero,
-            estado: 'error',
-            idHistoria: idHistoria,
-            mensaje: `Error ${respuesta?.status || '500'}`,
-            raw: respuesta
-        };
-    }
-
-    // ============================================================
-    // ACTUALIZAR STATS Y TABLA
-    // ============================================================
-    function actualizarStats() {
-        const total = numerosOriginales.length;
-        const exitos = resultados.filter(r => r.estado === 'exito').length;
-        const bloqueadas = resultados.filter(r => r.estado === 'bloqueada').length;
-        const errores = resultados.filter(r => r.estado === 'error').length;
-        const pendientes = total - resultados.length;
-
-        totalNumeros.textContent = total;
-        exitosNumeros.textContent = exitos;
-        bloqueadasNumeros.textContent = bloqueadas;
-        fallosNumeros.textContent = errores;
-        pendientesNumeros.textContent = pendientes;
-
-        contadorAdmisiones.textContent = `${total} números`;
-
-        // Actualizar contadores de tabs
-        document.getElementById('countTodos').textContent = total;
-        document.getElementById('countPendientes').textContent = pendientes;
-        document.getElementById('countExitos').textContent = exitos;
-        document.getElementById('countBloqueadas').textContent = bloqueadas;
-        document.getElementById('countErrores').textContent = errores;
-
-        renderizarTabla();
-    }
-
-    // ============================================================
-    // RENDERIZAR TABLA
-    // ============================================================
-    function renderizarTabla() {
-        const tbody = document.getElementById('resultadosBody');
-        let datosFiltrados = [];
-
-        // Obtener todos los números con su estado
-        const todosLosNumeros = new Set(numerosOriginales);
-
-        // Mapa de resultados
-        const resultadoMap = {};
-        for (const r of resultados) {
-            resultadoMap[r.numero] = r;
-        }
-
-        // Construir lista de filas
-        const filas = [];
-        for (const num of numerosOriginales) {
-            if (resultadoMap[num]) {
-                filas.push(resultadoMap[num]);
-            } else {
-                filas.push({
-                    numero: num,
-                    estado: 'pendiente',
-                    idHistoria: 'N/A',
-                    mensaje: 'Pendiente de envío',
-                    raw: null
-                });
-            }
-        }
-
-        // Aplicar filtro
-        if (filtroActual !== 'todos') {
-            datosFiltrados = filas.filter(f => f.estado === filtroActual);
-        } else {
-            datosFiltrados = filas;
-        }
-
-        if (datosFiltrados.length === 0) {
-            tbody.innerHTML =
-                `<tr><td colspan="6" class="text-center text-muted" style="padding:20px;">No hay resultados para este filtro</td></tr>`;
-            return;
-        }
-
-        let html = '';
-        for (let i = 0; i < datosFiltrados.length; i++) {
-            const f = datosFiltrados[i];
-            const estadoClass = f.estado === 'exito' ? 'status-exito' :
-                f.estado === 'bloqueada' ? 'status-bloqueada' :
-                f.estado === 'error' ? 'status-error' : 'status-pendiente';
-
-            const badgeClass = f.estado === 'exito' ? 'badge-exito' :
-                f.estado === 'bloqueada' ? 'badge-bloqueada' :
-                f.estado === 'error' ? 'badge-error' : 'badge-pendiente';
-
-            const label = f.estado === 'exito' ? '✅ Éxito' :
-                f.estado === 'bloqueada' ? '⛔ Bloqueada' :
-                f.estado === 'error' ? '❌ Error' : '⏳ Pendiente';
-
-            const puedeEliminar = f.estado === 'exito' || f.estado === 'bloqueada' || f.estado === 'error';
-
-            html += `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td><strong>${f.numero}</strong></td>
-                    <td><span class="badge-status ${badgeClass}">${label}</span></td>
-                    <td>${f.idHistoria || 'N/A'}</td>
-                    <td class="${estadoClass}" style="font-size:12px;">${f.mensaje || '-'}</td>
-                    <td>
-                        ${puedeEliminar ? `<button class="btn-eliminar" onclick="eliminarFila(${f.numero})" title="Eliminar">✕</button>` : ''}
-                    </td>
-                </tr>
-            `;
-        }
-
-        tbody.innerHTML = html;
-    }
-
-    // ============================================================
-    // FILTRAR TABLA
-    // ============================================================
-    function filtrarTabla(filtro) {
-        filtroActual = filtro;
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelector(`.tab[data-filtro="${filtro}"]`).classList.add('active');
-        renderizarTabla();
-    }
-
-    // ============================================================
-    // ELIMINAR FILA
-    // ============================================================
-    function eliminarFila(numero) {
-        const idx = numerosOriginales.indexOf(numero);
-        if (idx !== -1) {
-            numerosOriginales.splice(idx, 1);
-        }
-        // También eliminar de resultados
-        const rIdx = resultados.findIndex(r => r.numero === numero);
-        if (rIdx !== -1) {
-            resultados.splice(rIdx, 1);
-        }
-        // Actualizar textarea
-        document.getElementById('listaAdmisiones').value = numerosOriginales.join(', ');
-        actualizarStats();
-        addLog(`🗑️ Eliminado ${numero}`, 'warning');
-    }
-
-    // ============================================================
-    // ELIMINAR ENVIADOS (todos los éxitos)
-    // ============================================================
-    function eliminarEnviados() {
-        const exitos = resultados.filter(r => r.estado === 'exito');
-        if (exitos.length === 0) {
-            addLog('⚠️ No hay éxitos para eliminar', 'warning');
-            return;
-        }
-
-        if (!confirm(`¿Eliminar ${exitos.length} números que ya fueron enviados exitosamente?`)) {
-            return;
-        }
-
-        const numerosAEliminar = new Set(exitos.map(r => r.numero));
-        numerosOriginales = numerosOriginales.filter(n => !numerosAEliminar.has(n));
-        resultados = resultados.filter(r => !numerosAEliminar.has(r.numero));
-
-        document.getElementById('listaAdmisiones').value = numerosOriginales.join(', ');
-        actualizarStats();
-        addLog(`🗑️ Eliminados ${exitos.length} números enviados exitosamente`, 'success');
-    }
-
-    // ============================================================
-    // LOGIN
-    // ============================================================
-    async function hacerLogin() {
-        const username = document.getElementById('loginUser').value.trim();
-        const password = document.getElementById('loginPass').value.trim();
-
-        if (!username || !password) {
-            addLog('Usuario y contraseña son obligatorios', 'error');
-            return null;
-        }
-
-        addLog(`🔑 Login como "${username}"...`, 'info');
-        actualizarLoader('🔑 Conectando...', 'Autenticando en el servidor');
-
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 45000);
-
-            const response = await fetch('https://total-oeyx.onrender.com/Loguin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                addLog(`Login falló: ${response.status}`, 'error');
-                return null;
-            }
-
-            const data = await response.json();
-
-            if (data.tokSesion) {
-                tokSesionActual = data.tokSesion;
-                addLog(`✅ Login exitoso (${tokSesionActual.length} caracteres)`, 'success');
-                return data;
-            } else {
-                addLog('⚠️ No se recibió tokSesion', 'error');
-                return null;
-            }
-
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                addLog('⏱️ Timeout en login (45s)', 'warning');
-            } else {
-                addLog(`❌ Error: ${error.message}`, 'error');
-            }
-            return null;
-        }
-    }
-
-    // ============================================================
-    // ENVIAR UNO
-    // ============================================================
-    async function enviarUno(token, numeroAdmision, index, total) {
-        const url = `${servidorBase}/subirdirecto`;
-
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    token: token,
-                    numeroAdmision: numeroAdmision.toString()
-                }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            const textResponse = await response.text();
-            let data;
-            try {
-                data = JSON.parse(textResponse);
-            } catch {
-                data = { raw: textResponse };
-            }
-
-            return {
-                status: response.status,
-                ok: response.ok,
-                data: data,
-                raw: textResponse,
-                numero: numeroAdmision,
-                index: index,
-                total: total
-            };
-
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                addLog(`⏱️ Timeout en ${numeroAdmision} (60s)`, 'warning');
-            } else {
-                addLog(`❌ Error en ${numeroAdmision}: ${error.message}`, 'error');
-            }
-            return {
-                status: 0,
-                ok: false,
-                data: { error: error.message },
-                numero: numeroAdmision,
-                index: index,
-                total: total
-            };
-        }
-    }
-
-    // ============================================================
-    // PROCESAR LISTA
-    // ============================================================
-    async function procesarLista() {
-        if (procesando) {
-            addLog('⚠️ Ya hay un proceso en ejecución', 'warning');
-            return;
-        }
-
-        // Parsear lista
-        const numeros = parsearLista();
-
-        if (numeros.length === 0) {
-            addLog('⚠️ No se detectaron números válidos', 'error');
-            return;
-        }
-
-        // Filtrar solo pendientes (no procesados)
-        const numerosProcesados = new Set(resultados.map(r => r.numero));
-        const pendientes = numeros.filter(n => !numerosProcesados.has(n));
-
-        if (pendientes.length === 0) {
-            addLog('✅ Todos los números ya fueron procesados', 'success');
-            return;
-        }
-
-        addLog(`📋 ${pendientes.length} números pendientes de ${numeros.length} total`, 'info');
-
-        btn.disabled = true;
-        btn.textContent = '⏳ Procesando...';
-        procesando = true;
-
-        mostrarLoader(true, '🚀 Iniciando proceso...', `Preparando ${pendientes.length} números`);
-
-        // Login
-        const loginData = await hacerLogin();
-
-        if (!loginData || !tokSesionActual) {
-            mostrarLoader(false);
-            addLog('❌ Login falló', 'error');
-            btn.disabled = false;
-            btn.textContent = '🚀 Enviar Pendientes';
-            procesando = false;
-            return;
-        }
-
-        // Procesar uno por uno
-        let procesados = 0;
-
-        for (let i = 0; i < pendientes.length; i++) {
-            const num = pendientes[i];
-            const progreso = ((i + 1) / pendientes.length) * 100;
-
-            actualizarLoader(
-                `📤 Enviando ${i+1}/${pendientes.length}: ${num}`,
-                `Progreso: ${Math.round(progreso)}%`,
-                progreso
-            );
-
-            addLog(`📤 Enviando ${num} (${i+1}/${pendientes.length})...`, 'info');
-
-            const respuesta = await enviarUno(tokSesionActual, num, i, pendientes.length);
-
-            // Clasificar resultado
-            const clasificado = clasificarResultado(num, respuesta);
-            resultados.push(clasificado);
-
-            // Mostrar mensaje en log
-            const icono = clasificado.estado === 'exito' ? '✅' :
-                clasificado.estado === 'bloqueada' ? '⛔' : '❌';
-
-            const detalle = clasificado.idHistoria !== 'N/A' ? `ID: ${clasificado.idHistoria}` : '';
-            addLog(`${icono} ${num} → ${clasificado.mensaje} ${detalle}`, clasificado.estado === 'exito' ? 'success' : 'warning');
-
-            procesados++;
+        // ============================================================
+        //  AUTO-PARSEAR AL ESCRIBIR
+        // ============================================================
+        document.getElementById('listaAdmisiones').addEventListener('input', function() {
+            const texto = this.value;
+            const numeros = texto
+                .split(/[,.\s\n\r;—-]+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0 && /^\d+$/.test(s))
+                .map(s => parseInt(s, 10));
+            const unicos = [...new Set(numeros)];
+            contadorAdmisiones.textContent = `${unicos.length} números`;
+            totalNumeros.textContent = unicos.length;
+            numerosOriginales = unicos;
             actualizarStats();
-
-            // Pequeña pausa entre envíos
-            if (i < pendientes.length - 1) {
-                await new Promise(r => setTimeout(r, 500));
-            }
-        }
-
-        mostrarLoader(false);
-
-        // Resumen
-        const exitos = resultados.filter(r => r.estado === 'exito').length;
-        const bloqueadas = resultados.filter(r => r.estado === 'bloqueada').length;
-        const errores = resultados.filter(r => r.estado === 'error').length;
-        const pendientesRestantes = numerosOriginales.length - resultados.length;
-
-        addLog(`📊 Resumen: ✅ ${exitos} éxitos | ⛔ ${bloqueadas} bloqueadas | ❌ ${errores} errores | ⏳ ${pendientesRestantes} pendientes`, 'success');
-
-        btn.disabled = false;
-        btn.textContent = '🚀 Enviar Pendientes';
-        procesando = false;
-    }
-
-    // ============================================================
-    // CARGAR EJEMPLO
-    // ============================================================
-    function cargarEjemplo() {
-        const ejemplo = [811711, 806775, 808694, 808693, 813202, 813205, 813315, 813312, 198672, 198675, 19868];
-        document.getElementById('listaAdmisiones').value = ejemplo.join(', ');
-        parsearLista();
-        // Limpiar resultados anteriores
-        resultados = [];
-        actualizarStats();
-        addLog('📝 Ejemplo cargado', 'info');
-    }
-
-    // ============================================================
-    // LIMPIAR
-    // ============================================================
-    function limpiarTodo() {
-        document.getElementById('listaAdmisiones').value = '';
-        numerosOriginales = [];
-        resultados = [];
-        actualizarStats();
-        logContainer.innerHTML = `<div class="log-line log-gray">🟢 Limpiado. Listo.</div>`;
-        mostrarLoader(false);
-        btn.disabled = false;
-        btn.textContent = '🚀 Enviar Pendientes';
-        procesando = false;
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-        const tbody = document.getElementById('resultadosBody');
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding:20px;">No hay resultados aún</td></tr>`;
-        addLog('🧹 Todo limpiado', 'info');
-    }
-
-    // ============================================================
-    // AUTO-PARSEAR AL ESCRIBIR
-    // ============================================================
-    document.getElementById('listaAdmisiones').addEventListener('input', function() {
-        const texto = this.value;
-        const numeros = texto
-            .split(/[,.\s\n\r;—-]+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 0 && /^\d+$/.test(s))
-            .map(s => parseInt(s, 10));
-        const unicos = [...new Set(numeros)];
-        contadorAdmisiones.textContent = `${unicos.length} números`;
-        totalNumeros.textContent = unicos.length;
-        numerosOriginales = unicos;
-        // No reseteamos resultados para no perder el historial
-        actualizarStats();
-    });
-
-    // ============================================================
-    // INICIALIZAR
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', () => {
-        detectarServidor();
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                procesarLista();
-            }
         });
 
-        addLog('🟢 Ctrl+Enter para enviar pendientes', 'gray');
-    });
-</script>
+        // ============================================================
+        //  INICIALIZAR
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            detectarServidor();
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    procesarLista();
+                }
+            });
+            addLog('🟢 Ctrl+Enter para enviar pendientes', 'gray');
+        });
+    </script>
 
 </body>
 </html>

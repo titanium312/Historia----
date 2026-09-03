@@ -90,7 +90,7 @@ function adolescencia(data) {
     const fr = Number(clinicos?.signos_vitales?.fr ?? 16);
     const temp = Number(clinicos?.signos_vitales?.temperatura ?? 36.5);
     const saturacion = Number(clinicos?.signos_vitales?.saturacion ?? 97);
-    const sc = 1.2; // superficie corporal fija
+    const sc = 1.2;
     // --- Laboratorios ---
     const glicemia = clinicos?.laboratorios?.glicemia_basal?.valor ?? null;
     const colesterolTotal = clinicos?.laboratorios?.colesterol_total?.valor ?? null;
@@ -196,9 +196,10 @@ function adolescencia(data) {
         return { codigo: "0", tieneResultado: false };
     };
     // ============================================================
-    // 8. DETERMINAR SEXO Y APLICAR LÓGICA CONDICIONAL
+    // 8. DETERMINAR SEXO (CORREGIDO) Y APLICAR LÓGICA CONDICIONAL
     // ============================================================
-    const esMujer = (generoId === 2);
+    // Usamos campos textuales para evitar inconsistencias (ej. generoId=1 pero paciente femenino)
+    const esMujer = (data.paciente?.sexo_nombre === 'FEMENINO' || data.generoTexto === 'FEMENINO');
     // Mapear resultados de pruebas
     const vihMap = mapPruebaRapida(vih);
     const sifilisMap = mapPruebaRapida(sifilis);
@@ -604,8 +605,8 @@ function adolescencia(data) {
         hallazgos_fisicos_otros_piel_historia: exploracionPiel,
         hallazgos_fisicos_otros_otro_historia: exploracionOtro,
         // --- DIAGNÓSTICOS ---
-        diagnostico_ingreso_tipo_historia: '2',
-        diagnostico_ingreso_fk_causa_externa: '1',
+        diagnostico_ingreso_tipo_historia: '1',
+        diagnostico_ingreso_fk_causa_externa: '40',
         diagnostico_ingreso_observaciones_historia: '',
         historia_clinica_enfermedades_diagnostico_ingreso: diagnosticos.map((d) => ({
             id_historia_enfermedad_diagnostico_ingreso: 0,
@@ -653,7 +654,7 @@ function adolescencia(data) {
         bloqueada: true,
         prescripcion_medicamentos: [],
         // ============================================================
-        // BLOQUE `historia_pym_juventud` (CORREGIDO)
+        // BLOQUE `historia_pym_juventud` (se mantiene igual)
         // ============================================================
         historia_pym_juventud: [
             {
@@ -961,7 +962,7 @@ function adolescencia(data) {
                 laboratorio_clinico_resultado_creatinina_sangre_juventud: creatinina !== null ? String(creatinina) : null,
                 laboratorio_clinico_fecha_creatinina_sangre_juventud: fechaConsulta,
                 laboratorio_clinico_observacion_creatinina_sangre_juventud: '',
-                // ✅ Pruebas rápidas mapeadas a códigos (o null si no hay dato)
+                // Pruebas rápidas mapeadas a códigos (o null si no hay dato)
                 laboratorio_clinico_resultado_prueba_rapida_VIH_juventud: vihMap.tieneResultado ? vihMap.codigo : null,
                 laboratorio_clinico_fecha_prueba_rapida_VIH_juventud: fechaVIH,
                 laboratorio_clinico_observacion_prueba_rapida_VIH_juventud: '',
@@ -1101,13 +1102,13 @@ function adolescencia(data) {
                 preguntas_de_whooley_p1_durante_los_ultimos_dias_se_ha_sentido_desanimado_a_menudo: false,
                 preguntas_de_whooley_p2_durante_los_ultimos_dias_ha_sentido_poco_interes: false,
                 puntuacion_test_whooley: '0',
-                escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: true,
-                escala_findrisc_con_que_frecuencia_come_frutas_verduras: '4',
+                escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: false,
+                escala_findrisc_con_que_frecuencia_come_frutas_verduras: "0",
                 escala_findrisc_le_han_recetado_alguna_vez_nedicamentos_contra_la_hta: false,
                 escala_findrisc_le_han_detectado_alguna_vez_niveles_altos_de_glucosa: false,
-                escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: '0',
-                puntuacion_escala_findrisc: '0',
-                porcentaje_escala_findrisc: '1',
+                escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "0",
+                puntuacion_escala_findrisc: "4",
+                porcentaje_escala_findrisc: "1",
                 riesgo_cardiovascular_edad_oms_juventud: String(edad),
                 riesgo_cardiovascular_sexo_oms_juventud: (generoId === 1) ? 'MASCULINO' : 'FEMENINO',
                 riesgo_cardiovascular_presion_arterial_oms_juventud: `${pa_sist}/${pa_diast}`,
@@ -1126,7 +1127,7 @@ function adolescencia(data) {
             },
         ],
         // ============================================================
-        // BLOQUE RESOLUCION 4505 (CON LÓGICA POR SEXO)
+        // BLOQUE RESOLUCION 4505 (CON LÓGICA POR SEXO Y CAMPO 87 AGREGADO)
         // ============================================================
         resolucion4505: [
             {
@@ -1138,9 +1139,11 @@ function adolescencia(data) {
                 // Clasificaciones de riesgo: 0 si edad <18
                 clasificacion_riesgo_cardiovascular: (edad < 18) ? "0" : (riesgoCardiovascular ? String(riesgoCardiovascular) : "21"),
                 "clasificación_riesgo_metabolico": (edad < 18) ? "0" : (riesgoMetabolico ? String(riesgoMetabolico) : "21"),
-                // ===== CAMPOS DE CÁNCER DE CÉRVIX (ASIGNADOS SEGÚN SEXO) =====
+                // ===== CAMPOS DE CÁNCER DE CÉRVIX =====
                 tratamiento_ablativo_escision_inspeccion_visual: tratamientoAblativo,
                 tamizaje_cancer_cuello_uterino: tamizajeCuello,
+                // --- CAMPO 87 AGREGADO ---
+                fecha_tamizaje_cancer_cuello_uterino: (esMujer && edad >= 10) ? "1835-01-01" : "1845-01-01",
                 resultado_tamizaje_cancer_cuello_uterino: resultadoCitologia,
                 calidad_muestra_citologia_cervicouterina: calidadMuestra,
                 codigo_habilitacion_IPS_citologia_cervicouterina: codigoIPS,
@@ -1148,7 +1151,7 @@ function adolescencia(data) {
                 citologia_cervicouterina: fechaCitologia,
                 fecha_colposcopia: fechaColposcopia,
                 fecha_biopsia_cervical: fechaBiopsia,
-                // =================================================================
+                // =====================================
                 suministro_metodo_anticonceptivo: "21",
                 codigo_pais: "170",
                 fecha_consulta_valoracion_integral: fechaConsulta,
