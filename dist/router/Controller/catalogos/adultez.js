@@ -1,11 +1,10 @@
 "use strict";
-// services/adultez.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adultez = void 0;
-/**
- * Convierte una fecha en formato /Date(ms)/ a string AAAA-MM-DD
- * Si no es válida, retorna null
- */
+exports.crearHistoriaAdultez = exports.adultez = void 0;
+// ============================================================
+// 1. FUNCIONES AUXILIARES
+// ============================================================
+/** Parsea una fecha en formato "/Date(milisegundos)/" o string ISO */
 function parseFechaAdmision(fecha) {
     if (!fecha)
         return null;
@@ -22,9 +21,7 @@ function parseFechaAdmision(fecha) {
     catch (e) { /* ignore */ }
     return null;
 }
-/**
- * Formatea una fecha a AAAA-MM-DD
- */
+/** Formatea una fecha a "YYYY-MM-DD" */
 function formatFecha(fecha) {
     if (!fecha)
         return '';
@@ -49,9 +46,7 @@ function formatFecha(fecha) {
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
-/**
- * Obtiene la fecha de admisión en formato AAAA-MM-DD (fallback a fecha actual)
- */
+/** Obtiene la fecha de admisión formateada a partir del objeto admision */
 function getFechaAdmisionFormateada(admision) {
     if (admision?.fecha_admision) {
         const d = parseFechaAdmision(admision.fecha_admision);
@@ -60,58 +55,134 @@ function getFechaAdmisionFormateada(admision) {
     }
     return formatFecha(new Date());
 }
+/** Genera un número aleatorio entre min y max (inclusive) redondeado a 1 decimal */
+function randomBetween(min, max) {
+    return Math.round((Math.random() * (max - min) + min) * 10) / 10;
+}
 /**
- * Resta un año a una fecha en formato AAAA-MM-DD
- * Si la fecha es especial (1845-01-01) la devuelve igual
+ * REGLA 0: Genera valor de laboratorio aleatorio si el original es inválido.
+ * @param tipo - tipo de laboratorio ('glicemia', 'creatinina', etc.)
+ * @param valorOriginal - valor proveniente del JSON (puede ser null, undefined, 0, 998)
+ * @param esHombre - booleano para ajustar PSA (solo en hombres)
  */
-function restarUnAnio(fechaStr) {
-    if (!fechaStr || fechaStr === '1845-01-01')
-        return '1845-01-01';
-    const partes = fechaStr.split('-');
-    if (partes.length === 3) {
-        const year = parseInt(partes[0], 10) - 1;
-        return `${year}-${partes[1]}-${partes[2]}`;
+function generarValorLaboratorio(tipo, valorOriginal, esHombre = false) {
+    const val = Number(valorOriginal);
+    if (!isNaN(val) && val > 0 && val !== 998)
+        return val;
+    // Si no es válido, generar aleatorio según tipo (rangos clínicamente normales)
+    switch (tipo) {
+        case 'glicemia':
+            return randomBetween(70, 100);
+        case 'creatinina':
+            return randomBetween(0.6, 1.2);
+        case 'hdl':
+            return randomBetween(40, 60);
+        case 'ldl':
+            return randomBetween(70, 130);
+        case 'trigliceridos':
+            return randomBetween(50, 150);
+        case 'hemoglobina':
+            return randomBetween(12, 16);
+        case 'psa':
+            return esHombre ? randomBetween(0.5, 4) : 0;
+        default:
+            return 0;
+    }
+}
+/**
+ * REGLA 1: Procesa fecha de laboratorio.
+ * - Si la fecha original existe y es <= fecha de admisión → se conserva.
+ * - En caso contrario → fechaAdmision - 3 días.
+ * - Luego ajusta a viernes si cae en fin de semana.
+ */
+function procesarFechaLaboratorio(fechaOriginal, fechaAdmisionStr) {
+    const admisionDate = new Date(fechaAdmisionStr);
+    if (isNaN(admisionDate.getTime())) {
+        // fallback: usar fecha actual
+        return formatFecha(new Date());
+    }
+    let fechaBase = null;
+    if (fechaOriginal && typeof fechaOriginal === 'string' && fechaOriginal.trim() !== '') {
+        const parsed = new Date(fechaOriginal);
+        if (!isNaN(parsed.getTime())) {
+            // Si la fecha original es <= admisión, conservarla
+            if (parsed.getTime() <= admisionDate.getTime()) {
+                fechaBase = parsed;
+            }
+        }
+    }
+    // Si no se conservó, calcular: admisión - 3 días
+    if (!fechaBase) {
+        fechaBase = new Date(admisionDate);
+        fechaBase.setDate(fechaBase.getDate() - 3);
+    }
+    // Ajuste de fin de semana (si es sábado o domingo, retroceder a viernes)
+    const day = fechaBase.getDay(); // 0=domingo, 6=sábado
+    if (day === 0 || day === 6) {
+        fechaBase.setDate(fechaBase.getDate() - (day === 0 ? 2 : 1)); // domingo -> viernes (-2), sábado -> viernes (-1)
+    }
+    return formatFecha(fechaBase);
+}
+/**
+ * REGLA 2: Calcula fecha de método anticonceptivo.
+ * - Siempre: fechaAdmision - 1 año.
+ * - Luego ajusta a viernes si cae en fin de semana.
+ */
+function procesarFechaMetodoAnticonceptivo(fechaAdmisionStr) {
+    const admisionDate = new Date(fechaAdmisionStr);
+    if (isNaN(admisionDate.getTime())) {
+        return formatFecha(new Date());
+    }
+    const fechaBase = new Date(admisionDate);
+    fechaBase.setFullYear(fechaBase.getFullYear() - 1);
+    // Ajuste de fin de semana
+    const day = fechaBase.getDay();
+    if (day === 0 || day === 6) {
+        fechaBase.setDate(fechaBase.getDate() - (day === 0 ? 2 : 1));
+    }
+    return formatFecha(fechaBase);
+}
+/**
+ * REGLA 0 (categóricos): Rellena campos de pruebas rápidas con "Negativo" si vienen vacíos.
+ */
+function rellenarCategorico(valor) {
+    if (valor === null || valor === undefined || valor === '' || valor === '0') {
+        return 'Negativo';
+    }
+    return String(valor);
+}
+/**
+ * Ajusta una fecha para que no sea menor que la fecha de nacimiento del paciente.
+ * Si es menor, la ajusta a la fecha de nacimiento + 1 día.
+ */
+function ajustarFechaNoMenorQueNacimiento(fechaStr, fechaNacimientoStr) {
+    if (!fechaNacimientoStr)
+        return fechaStr;
+    const fecha = new Date(fechaStr);
+    const nacimiento = new Date(fechaNacimientoStr);
+    if (isNaN(fecha.getTime()) || isNaN(nacimiento.getTime()))
+        return fechaStr;
+    if (fecha.getTime() < nacimiento.getTime()) {
+        const ajustada = new Date(nacimiento);
+        ajustada.setDate(ajustada.getDate() + 1);
+        return formatFecha(ajustada);
     }
     return fechaStr;
 }
-/**
- * Ajusta consistencia entre fecha y resultado de laboratorio
- * Regla: si el resultado es válido, la fecha debe ser válida (no especial).
- *        si el resultado no es válido, se fuerza fecha especial y valor por defecto.
- */
-function ajustarLaboratorio(valor, fecha, fechaAdmision, esHemoglobina = false) {
-    const fechasEspeciales = ['1800-01-01', '1805-01-01', '1810-01-01', '1825-01-01', '1830-01-01', '1835-01-01'];
-    const fechaNoAplica = '1845-01-01';
-    let valorNum = Number(valor);
-    if (isNaN(valorNum))
-        valorNum = esHemoglobina ? 0 : 998;
-    const esValido = !esHemoglobina
-        ? (valorNum > 0 && valorNum < 998 && valorNum !== 998)
-        : (valorNum > 0);
-    if (esValido) {
-        if (!fecha || fecha === '' || fechasEspeciales.includes(fecha) || fecha === fechaNoAplica) {
-            return { valor: valorNum, fecha: fechaAdmision };
-        }
-        else {
-            return { valor: valorNum, fecha };
-        }
-    }
-    else {
-        if (esHemoglobina) {
-            return { valor: 0, fecha: fechaNoAplica };
-        }
-        else {
-            return { valor: 998, fecha: '1800-01-01' };
-        }
-    }
-}
+// ============================================================
+// 2. FUNCIÓN PRINCIPAL (LÓGICA DE NEGOCIO) CON CORRECCIONES
+// ============================================================
 const adultez = (data) => {
     // ==========================================================
-    // 1. Extraer datos básicos
+    // 1. Extraer datos básicos y determinar sexo
     // ==========================================================
-    const { admision, paciente, historia, facturacion, edad, sexoId, generoTexto, datosClinicos } = data;
-    const esMasculino = (sexoId === 2 || generoTexto?.toUpperCase() === 'MASCULINO');
-    const esMujer = !esMasculino;
+    const { admision, paciente, historia, facturacion, edad, datosClinicos } = data;
+    // CORRECCIÓN: usar generoId (2 = femenino, 1 = masculino) según el JSON de entrada.
+    const generoId = data.generoId ?? data.sexoId ?? data.paciente?.sexoId ?? 0;
+    const esMujer = generoId === 2; // En el JSON de ejemplo, generoId:2 es FEMENINO
+    const esHombre = generoId === 1; // En el JSON de ejemplo, generoId:1 sería MASCULINO (no usado)
+    // Obtener fecha de nacimiento para ajustes
+    const fechaNacimientoStr = paciente?.fecha_nacimiento ? formatFecha(paciente.fecha_nacimiento) : '';
     // ==========================================================
     // 2. Datos antropométricos
     // ==========================================================
@@ -120,38 +191,46 @@ const adultez = (data) => {
     const imc = peso / ((talla / 100) ** 2);
     const fechaAdmisionStr = getFechaAdmisionFormateada(admision);
     // ==========================================================
-    // 3. Laboratorios ajustados
+    // 3. Laboratorios y pruebas rápidas (REGLA 0 y REGLA 1)
     // ==========================================================
-    const glicemiaOrig = datosClinicos?.laboratorios?.glicemia_basal?.valor ?? 0;
-    const fechaGlicemiaOrig = datosClinicos?.laboratorios?.glicemia_basal?.fecha || '';
-    const ldlOrig = datosClinicos?.laboratorios?.ldl?.valor ?? 0;
-    const fechaLDLOrig = datosClinicos?.laboratorios?.ldl?.fecha || '';
-    const hdlOrig = datosClinicos?.laboratorios?.hdl?.valor ?? 0;
-    const fechaHDLOrig = datosClinicos?.laboratorios?.hdl?.fecha || '';
-    const trigOrig = datosClinicos?.laboratorios?.trigliceridos?.valor ?? 0;
-    const fechaTrigOrig = datosClinicos?.laboratorios?.trigliceridos?.fecha || '';
-    const creatOrig = datosClinicos?.laboratorios?.creatinina?.valor ?? 0;
-    const fechaCreatOrig = datosClinicos?.laboratorios?.creatinina?.fecha || '';
-    const hemoOrig = datosClinicos?.laboratorios?.hemoglobina?.valor ?? 0;
-    const fechaHemoOrig = datosClinicos?.laboratorios?.hemoglobina?.fecha || '';
-    const labGlicemia = ajustarLaboratorio(glicemiaOrig, fechaGlicemiaOrig, fechaAdmisionStr, false);
-    const labLDL = ajustarLaboratorio(ldlOrig, fechaLDLOrig, fechaAdmisionStr, false);
-    const labHDL = ajustarLaboratorio(hdlOrig, fechaHDLOrig, fechaAdmisionStr, false);
-    const labTrig = ajustarLaboratorio(trigOrig, fechaTrigOrig, fechaAdmisionStr, false);
-    const labCreat = ajustarLaboratorio(creatOrig, fechaCreatOrig, fechaAdmisionStr, false);
-    const labHemo = ajustarLaboratorio(hemoOrig, fechaHemoOrig, fechaAdmisionStr, true);
-    const glicemia = labGlicemia.valor;
-    const fechaGlicemia = labGlicemia.fecha;
-    const ldl = labLDL.valor;
-    const fechaLDL = labLDL.fecha;
-    const hdl = labHDL.valor;
-    const fechaHDL = labHDL.fecha;
-    const trigliceridos = labTrig.valor;
-    const fechaTrigliceridos = labTrig.fecha;
-    const creatinina = labCreat.valor;
-    const fechaCreatinina = labCreat.fecha;
-    const hemoglobina = labHemo.valor;
-    const fechaHemoglobina = labHemo.fecha;
+    // --- Laboratorios (valores) ---
+    const labOrig = datosClinicos?.laboratorios || {};
+    const glicemiaOrig = labOrig.glicemia_basal?.valor ?? null;
+    const ldlOrig = labOrig.ldl?.valor ?? null;
+    const hdlOrig = labOrig.hdl?.valor ?? null;
+    const trigOrig = labOrig.trigliceridos?.valor ?? null;
+    const creatOrig = labOrig.creatinina?.valor ?? null;
+    const hemoOrig = labOrig.hemoglobina?.valor ?? null;
+    const psaOrig = datosClinicos?.tamizajes_especifos?.psa?.resultado ?? null;
+    // Generar valores (REGLA 0)
+    const glicemia = generarValorLaboratorio('glicemia', glicemiaOrig);
+    const ldl = generarValorLaboratorio('ldl', ldlOrig);
+    const hdl = generarValorLaboratorio('hdl', hdlOrig);
+    const trigliceridos = generarValorLaboratorio('trigliceridos', trigOrig);
+    const creatinina = generarValorLaboratorio('creatinina', creatOrig);
+    const hemoglobina = generarValorLaboratorio('hemoglobina', hemoOrig);
+    const psa = generarValorLaboratorio('psa', psaOrig, esHombre);
+    // --- Fechas de laboratorio (REGLA 1) ---
+    const fechaGlicemia = procesarFechaLaboratorio(labOrig.glicemia_basal?.fecha, fechaAdmisionStr);
+    const fechaLDL = procesarFechaLaboratorio(labOrig.ldl?.fecha, fechaAdmisionStr);
+    const fechaHDL = procesarFechaLaboratorio(labOrig.hdl?.fecha, fechaAdmisionStr);
+    const fechaTrig = procesarFechaLaboratorio(labOrig.trigliceridos?.fecha, fechaAdmisionStr);
+    const fechaCreat = procesarFechaLaboratorio(labOrig.creatinina?.fecha, fechaAdmisionStr);
+    const fechaHemo = procesarFechaLaboratorio(labOrig.hemoglobina?.fecha, fechaAdmisionStr);
+    const fechaPsa = procesarFechaLaboratorio(datosClinicos?.tamizajes_especifos?.psa?.fecha, fechaAdmisionStr);
+    // --- Pruebas rápidas (categóricos) ---
+    const rapidas = datosClinicos?.pruebas_rapidas || {};
+    const vih = rellenarCategorico(rapidas.vih?.resultado);
+    const sifilis = rellenarCategorico(rapidas.sifilis?.resultado);
+    const hepB = rellenarCategorico(rapidas.hepatitis_b?.resultado);
+    const hepC = rellenarCategorico(rapidas.hepatitis_c?.resultado);
+    // Fechas de pruebas rápidas (también REGLA 1)
+    const fechaVIH = procesarFechaLaboratorio(rapidas.vih?.fecha, fechaAdmisionStr);
+    const fechaSifilis = procesarFechaLaboratorio(rapidas.sifilis?.fecha, fechaAdmisionStr);
+    const fechaHepB = procesarFechaLaboratorio(rapidas.hepatitis_b?.fecha, fechaAdmisionStr);
+    const fechaHepC = procesarFechaLaboratorio(rapidas.hepatitis_c?.fecha, fechaAdmisionStr);
+    // --- Fecha método anticonceptivo (REGLA 2) ---
+    const fechaMetodoAnticonceptivo = procesarFechaMetodoAnticonceptivo(fechaAdmisionStr);
     // ==========================================================
     // 4. Salud visual, riesgos, estado nutricional
     // ==========================================================
@@ -185,11 +264,11 @@ const adultez = (data) => {
         hepatitisC: esMujer50a69 ? 1 : 0,
         VIH: esMujer50a69 ? 1 : 0,
         sifilis: esMujer50a69 ? 1 : 0,
-        antigeno_prostatico: (esMasculino && edad >= 45) ? 1 : 0,
+        antigeno_prostatico: (esHombre && edad >= 45) ? 1 : 0,
         colposcopia: 0,
         colonoscopia: (edad >= 50) ? 1 : 0,
         tacto_rectal: (edad >= 45) ? 1 : 0,
-        PSA: (esMasculino && edad >= 45) ? 1 : 0,
+        PSA: (esHombre && edad >= 45) ? 1 : 0,
     };
     // ==========================================================
     // 6. Gineco-obstétricos (solo mujeres)
@@ -228,7 +307,7 @@ const adultez = (data) => {
     const hora = admision?.hora_admision || { Hours: 13, Minutes: 23 };
     const horaStr = `${String(hora.Hours).padStart(2, '0')}:${String(hora.Minutes).padStart(2, '0')}`;
     // ==========================================================
-    // 8. Textos dinámicos
+    // 8. Textos dinámicos (con género según esHombre/esMujer)
     // ==========================================================
     const enfermedadActual = `Paciente de ${edad} años en control de promoción y mantenimiento (PYM). Sin síntomas ni signos de alarma. `;
     const analisis = `Examen físico sin alteraciones. IMC ${imc.toFixed(1)} (${estadoNutricional}). `;
@@ -250,7 +329,7 @@ const adultez = (data) => {
         telefono_paciente: paciente?.telefono || "",
         numero_admision: String(admision?.numero_admision || 0),
         fk_factura_consultas: String(facturacion?.id_factura_consultas || 0),
-        motivo_consulta_consulta_externa: esMasculino ? `Control del adulto (${edad} años)` : `Control de la adulta (${edad} años)`,
+        motivo_consulta_consulta_externa: esHombre ? `Control del adulto (${edad} años)` : `Control de la adulta (${edad} años)`,
         // ---------- Facturación / acompañantes ----------
         facturacion_admisiones: {
             fk_paciente: String(paciente?.id_paciente || 0),
@@ -267,7 +346,7 @@ const adultez = (data) => {
                 fk_nivel_educativo: "13",
                 fk_grupo_etnico: "6",
                 fk_discapacidad: "6",
-                EnfoqueDiferencialIdGenero: esMasculino ? "2" : "1",
+                EnfoqueDiferencialIdGenero: String(generoId),
                 IdOrientacionSexualEnfoqueDiferencial: "5",
                 enfoque_diferencial_religion: "",
                 enfoque_diferencial_consumo_spa: "0",
@@ -316,7 +395,7 @@ const adultez = (data) => {
         revision_sistema_hematopoyetico_historia: "Sin alteraciones. Niega sangrados, hematomas espontáneos, petequias, ictericia o palidez.",
         // ---------- Valoraciones ----------
         valoracion_espiritual: "No se evidencian conflictos espirituales significativos. Refiere apoyo en su comunidad religiosa.",
-        valoracion_emocional: "Paciente en aparente estabilidad emocional. Manifiesta sentirse bien consigo misma.",
+        valoracion_emocional: `Paciente en aparente estabilidad emocional. Manifiesta sentirse bien consigo mism${esHombre ? 'o' : 'a'}.`,
         valoracion_emocional_tristeza: "Negada.",
         valoracion_emocional_ideacion_muerte: "Negada.",
         valoracion_emocional_anciedad: "Negada.",
@@ -346,7 +425,7 @@ const adultez = (data) => {
         norton_incontinencia: "-1",
         // ---------- Conducta y plan ----------
         conducta_historia: "Se realiza valoración integral de promoción y mantenimiento en adultez. Se generan órdenes de tamizajes preventivos completos (glicemia, perfil lipídico, creatinina, citología cervicouterina, mamografía, sangre oculta en heces, uroanálisis, pruebas rápidas VIH, Hepatitis B, Hepatitis C, Sífilis). Se educa en signos de alarma, hábitos saludables y prevención de COVID-19. Se remite a consulta de Nutrición y Dietética por obesidad Grado I (IMC 32.09). Se agenda cita de control para entrega de resultados en 15 días.",
-        signos_de_alarma_educacion: "Se educó a la paciente sobre signos de alarma: dolor en el pecho, cefalea intensa, dolor abdominal severo, edema de pies y manos, fiebre persistente, hemorragia vaginal anormal, pérdida de peso inexplicable, cambios en hábitos intestinales o urinarios. Se instruyó para consultar ante la aparición de cualquiera de estos síntomas.",
+        signos_de_alarma_educacion: `Se educó al${esHombre ? '' : 'a'} paciente sobre signos de alarma: dolor en el pecho, cefalea intensa, dolor abdominal severo, edema de pies y manos, fiebre persistente, hemorragia vaginal anormal, pérdida de peso inexplicable, cambios en hábitos intestinales o urinarios. Se instruyó para consultar ante la aparición de cualquiera de estos síntomas.`,
         plan_tratamiento_descripcion_historia: "1. Tamizajes preventivos según Resolución 3280: glicemia, perfil lipídico, creatinina, citología cervicouterina, mamografía, sangre oculta en heces, uroanálisis, pruebas rápidas VIH, Hepatitis B, Hepatitis C y Sífilis. 2. Remisión a consulta de Nutrición y Dietética para manejo de obesidad Grado I. 3. Educación en hábitos de vida saludable (actividad física, alimentación balanceada, hidratación adecuada). 4. Control en 15 días para entrega de resultados.",
         // ---------- Antecedentes tóxicos ----------
         antecedentes_toxicos_cigarrillo_cantidad_dia_historia: "0",
@@ -368,7 +447,7 @@ const adultez = (data) => {
         antecedetes_personales_otro_cual_historia: "",
         antecedetes_personales_observaciones_historia: "Sin antecedentes personales de importancia.",
         antecedetes_personales_habitos_saludables: "Alimentación variada, sin ejercicio regular.",
-        antecedetes_personales_comportamiento_general: "Paciente colaboradora y consciente.",
+        antecedetes_personales_comportamiento_general: `Paciente colaborador${esHombre ? '' : 'a'} y consciente.`,
         antecedetes_personales_traumatologicos: "Niega fracturas o cirugías ortopédicas.",
         antecedentes_personales_diabetes: false,
         antecedentes_personales_hipertension: false,
@@ -396,7 +475,7 @@ const adultez = (data) => {
         antecedentes_familiares_estructura_familiar: "Familia nuclear de 4 integrantes, conyuge y dos hijos.",
         antecedentes_familiares_condiciones_socioeconomicas: "Estrato socioeconómico medio-bajo, vivienda propia.",
         antecedentes_familiares_redes_apoyo: "Cuenta con apoyo familiar y vecinal.",
-        antecedentes_familiares_situacion_escolar_laboral: "Ama de casa, escolaridad básica.",
+        antecedentes_familiares_situacion_escolar_laboral: esHombre ? "Trabajador independiente, escolaridad básica." : "Ama de casa, escolaridad básica.",
         // ---------- Hereditarios ----------
         hemofilia_el: "0", hemofilia_familia_el: "0", hemofilia_ella: "0", hemofilia_familia_ella: "0",
         trast_coagulacion_el: "0", trast_coagulacion_familia_el: "0", trast_coagulacion_ella: "0", trast_coagulacion_familia_ella: "0",
@@ -426,7 +505,7 @@ const adultez = (data) => {
         antecedetes_vacunacion_observaciones_historia: "Esquema de vacunación completo para la edad (COVID-19, influenza, neumococo, Tdap, etc.).",
         historia_clinica_procedimientos_antecedentes_quirurgicos: [],
         antecedetes_quirurgicos_observaciones_historia: "Niega intervenciones quirúrgicas previas.",
-        // ---------- Gineco-obstétricos ----------
+        // ---------- Gineco-obstétricos (solo mujeres) ----------
         antecedentes_gineco_obstetricos_menarca: esMujer ? (gineco.menarca || "") : "",
         antecedentes_gineco_obstetricos_duracion_ciclo: esMujer ? (gineco.duracion_ciclo || "") : "",
         antecedentes_gineco_obstetricos_inicio_relaciones: esMujer ? (gineco.inicio_relaciones || "") : "",
@@ -503,7 +582,7 @@ const adultez = (data) => {
         hallazgos_fisicos_otros_genitourinario_historia: "Genitales externos normales. Puñopercusión negativa.",
         hallazgos_fisicos_otros_pelvis_historia: "Simétrica, sin deformidades, buena movilidad coxofemoral.",
         hallazgos_fisicos_otros_dorso_historia: "Simétrico, sin deformidades, sin edemas.",
-        hallazgos_fisicos_otros_neurologico_historia: "Glasgow 15/15, consciente, orientada en tiempo y espacio, motricidad y sensibilidad general conservadas.",
+        hallazgos_fisicos_otros_neurologico_historia: `Glasgow 15/15, consciente, orientad${esHombre ? 'o' : 'a'} en tiempo y espacio, motricidad y sensibilidad general conservadas.`,
         hallazgos_fisicos_otros_piel_historia: "Hidratada, aspecto y coloración normal, sin lesiones.",
         hallazgos_fisicos_otros_otro_historia: "Emuntorios normales.",
         // ---------- Diagnósticos ----------
@@ -516,7 +595,7 @@ const adultez = (data) => {
             fk_enfermedad: d,
             fk_institucion: 0
         })),
-        diagnostico_principales_observaciones_consulta_externa: `Paciente asintomática en control de rutina.${imc >= 30 ? ' Se detecta obesidad Grado I y se inicia tamizaje completo.' : ''}`,
+        diagnostico_principales_observaciones_consulta_externa: `Paciente asintomátic${esHombre ? 'o' : 'a'} en control de rutina.${imc >= 30 ? ' Se detecta obesidad Grado I y se inicia tamizaje completo.' : ''}`,
         diagnostico_relacional_tipo_historia: "0",
         diagnostico_relacional_fk_causa_externa: "0",
         diagnostico_relacional_observaciones_historia: "",
@@ -567,13 +646,15 @@ const adultez = (data) => {
                 hallazgos_fisicos_otros_genitourinarioPym_adultez: "GENITALES EXTERNOS NORMALES, PUÑOPERCUSION NEGATIVA",
                 hallazgos_fisicos_otros_pelvisPym_adultez: "SIMETRICA, NO DEFORMIDADES, BUENA MOVILIDAD COXOFEMORAL",
                 hallazgos_fisicos_otros_dorsoPym_adultez: "SIMETRICAS, NO DEFORMIDADES, NO EDEMAS",
-                hallazgos_fisicos_otros_neurologicoPym_adultez: "GLASGOW 15/15, CONCIENTE, ORIENTADO EN TIEMPO Y ESPACIO, MOTRICIDAD Y SENSIBILIDAD GENERAL CONSERVADAS",
+                hallazgos_fisicos_otros_neurologicoPym_adultez: `GLASGOW 15/15, CONCIENTE, ORIENTAD${esHombre ? 'O' : 'A'} EN TIEMPO Y ESPACIO, MOTRICIDAD Y SENSIBILIDAD GENERAL CONSERVADAS`,
                 hallazgos_fisicos_otros_pielPym_adultez: "HIDRATADA, ASPECTO Y COLORACION NORMAL, SIN LESIONES",
                 hallazgos_fisicos_otros_otro_adultez: "EMUNTORIOS NORMALES",
                 hallazgos_fisicos_otros_mamaPym_adultez: "MAMAS PÉNDULAS, SIN PRESENCIA DE LESIONES VISIBLES, PIEL DE ASPECTO NORMAL, SIN DETECCIÓN DE MASAS NI ADENOPATÍAS, SIN DOLOR A LA PALPACIÓN, NO SE EVIDENCIA SALIDA DE SECRECIONES DE LOS PEZONES",
-                hallazgos_fisicos_otros_tacto_rectalPym_adultez: (esMasculino && edad >= 45) || (esMujer && edad >= 50)
-                    ? "NO SE REALIZA TACTO RECTAL POR SER PACIENTE FEMENINA. NIEGA SÍNTOMAS URINARIOS (DISURIA, POLIURIA O HEMATURIA)."
-                    : "",
+                hallazgos_fisicos_otros_tacto_rectalPym_adultez: (esHombre && edad >= 45)
+                    ? "SE REALIZA TACTO RECTAL: PRÓSTATA NO PALPABLE, SIN NÓDULOS."
+                    : (esMujer && edad >= 50)
+                        ? "NO SE REALIZA TACTO RECTAL POR SER PACIENTE FEMENINA."
+                        : "",
                 cuestionario_srq_dolores_cabeza_adultez: false,
                 cuestionario_srq_mal_apetito_adultez: false,
                 cuestionario_srq_duerme_mal_adultez: false,
@@ -823,13 +904,13 @@ const adultez = (data) => {
                 laboratorio_clinico_fecha_mamografia_adultez: "",
                 laboratorio_clinico_observacion_mamografia_adultez: "",
                 laboratorio_clinico_resultado_trigliceridos_adultez: trigliceridos,
-                laboratorio_clinico_fecha_trigliceridos_adultez: fechaTrigliceridos,
+                laboratorio_clinico_fecha_trigliceridos_adultez: fechaTrig,
                 laboratorio_clinico_observacion_trigliceridos_adultez: "",
                 laboratorio_clinico_resultado_glicemia_basal_adultez: glicemia,
                 laboratorio_clinico_fecha_glicemia_basal_adultez: fechaGlicemia,
                 laboratorio_clinico_observacion_glicemia_basal_adultez: "",
                 laboratorio_clinico_resultado_creatinina_sangre_adultez: creatinina,
-                laboratorio_clinico_fecha_creatinina_sangre_adultez: fechaCreatinina,
+                laboratorio_clinico_fecha_creatinina_sangre_adultez: fechaCreat,
                 laboratorio_clinico_observacion_creatinina_sangre_adultez: "",
                 laboratorio_resultado_clinico_hepatitis_C_adultez: null,
                 laboratorio_clinico_fecha_hepatitis_C_adultez: "",
@@ -844,7 +925,7 @@ const adultez = (data) => {
                 laboratorio_clinico_fecha_prueba_rapida_VIH_adultez: "",
                 laboratorio_clinico_observacion_prueba_rapida_VIH_adultez: "",
                 laboratorio_clinico_resultado_hemoglobina_adultez: hemoglobina,
-                laboratorio_clinico_fecha_hemoglobina_adultez: fechaHemoglobina,
+                laboratorio_clinico_fecha_hemoglobina_adultez: fechaHemo,
                 laboratorio_clinico_observacion_hemoglobina_adultez: "",
                 laboratorio_clinico_resultado_uroanalisis_adultez: "",
                 laboratorio_clinico_fecha_uroanalisis_adultez: "",
@@ -905,15 +986,15 @@ const adultez = (data) => {
                 // ESCALA FINDRISC
                 //========================================================
                 escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: false,
-                escala_findrisc_con_que_frecuencia_come_frutas_verduras: "0",
+                escala_findrisc_con_que_frecuencia_come_frutas_verduras: "2",
                 escala_findrisc_le_han_recetado_alguna_vez_nedicamentos_contra_la_hta: false,
                 escala_findrisc_le_han_detectado_alguna_vez_niveles_altos_de_glucosa: false,
-                escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "0",
+                escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "2",
                 puntuacion_escala_findrisc: "4",
                 porcentaje_escala_findrisc: "1",
                 //=======================================================
                 riesgo_cardiovascular_edad_oms_adultez: String(edad),
-                riesgo_cardiovascular_sexo_oms_adultez: esMasculino ? "MASCULINO" : "FEMENINO",
+                riesgo_cardiovascular_sexo_oms_adultez: (esHombre) ? "MASCULINO" : "FEMENINO",
                 riesgo_cardiovascular_presion_arterial_oms_adultez: "120/80",
                 riesgo_cardiovascular_fumador_oms_adultez: false,
                 riesgo_cardiovascular_imc_oms_adultez: parseFloat(imc.toFixed(2)),
@@ -937,12 +1018,12 @@ const adultez = (data) => {
                 value_tab_adultez: 0
             }],
         // ==========================================================
-        // RESOLUCIÓN 4505 – CONSTRUCCIÓN DINÁMICA SEGÚN SEXO Y EDAD
+        // RESOLUCIÓN 4505 – CONSTRUCCIÓN CON CORRECCIONES
         // ==========================================================
         resolucion4505: [
             {
                 // --- Campos generales ---
-                gestacion: esMasculino ? "0" : "2",
+                gestacion: (esMujer && edad >= 29 && edad <= 59) ? "2" : "0",
                 sintomatico_respiratorio: "2",
                 fecha_toma_baciloscopia_diagnostico: "1845-01-01",
                 resultado_baciloscopia_diagnostico: "4",
@@ -962,53 +1043,54 @@ const adultez = (data) => {
                 resultado_HDL: hdl,
                 fecha_toma_HDL: fechaHDL,
                 resultado_trigliceridos: trigliceridos,
-                fecha_toma_trigliceridos: fechaTrigliceridos,
+                fecha_toma_trigliceridos: fechaTrig,
                 resultado_hemoglobina: hemoglobina,
-                fecha_toma_hemoglobina: fechaHemoglobina,
+                fecha_toma_hemoglobina: fechaHemo,
                 resultado_creatinina: creatinina,
-                fecha_creatinina: fechaCreatinina,
+                fecha_creatinina: fechaCreat,
                 // --- Hepatitis B ---
                 resultado_antigeno_superficie_hepatitisB_toda: "0",
                 fecha_antigeno_superficie_hepatitisB_toda: "1845-01-01",
-                // --- CÁNCER DE CÉRVIX (según sexo) ---
-                tamizaje_cancer_cuello_uterino: esMujer ? "21" : "0",
-                citologia_cervicouterina: esMujer ? "1800-01-01" : "1845-01-01",
-                resultado_tamizaje_cancer_cuello_uterino: esMujer ? "21" : "0",
-                calidad_muestra_citologia_cervicouterina: "0",
-                codigo_habilitacion_IPS_citologia_cervicouterina: "0",
-                fecha_colposcopia: esMujer ? "1800-01-01" : "1845-01-01",
+                // --- CÁNCER DE CÉRVIX (corregido) ---
+                tamizaje_cancer_cuello_uterino: (esMujer && edad >= 29 && edad <= 59) ? "1" : "0",
+                fecha_tamizaje_cancer_cuello_uterino: (esMujer && edad >= 29 && edad <= 59)
+                    ? ajustarFechaNoMenorQueNacimiento(fechaAdmisionStr, fechaNacimientoStr)
+                    : "1845-01-01",
+                citologia_cervicouterina: (esMujer && edad >= 29 && edad <= 59) ? fechaAdmisionStr : "1845-01-01",
+                resultado_tamizaje_cancer_cuello_uterino: (esMujer && edad >= 29 && edad <= 59) ? "17" : "0",
+                calidad_muestra_citologia_cervicouterina: (esMujer && edad >= 29 && edad <= 59) ? "1" : "0",
+                codigo_habilitacion_IPS_citologia_cervicouterina: (esMujer && edad >= 29 && edad <= 59) ? "21" : "0",
+                fecha_colposcopia: "1845-01-01",
                 fecha_biopsia_cervical: esMujer ? "1800-01-01" : "1845-01-01",
                 resultado_biopsia_cervicouterina: esMujer ? "21" : "0",
                 tratamiento_ablativo_escision_inspeccion_visual: "0",
                 // --- Mamografía ---
-                resultado_mamografia_res202: (esMujer && edad >= 35) ? fechaAdmisionStr : "1845-01-01",
-                fecha_mamografía: esMujer ? (plan.mamografia ? fechaAdmisionStr : "1845-01-01") : "1845-01-01",
-                resultado_biopsia_mama: esMujer ? "21" : "0",
-                fecha_toma_biopsia_seno_BACAF: esMujer ? "1800-01-01" : "1845-01-01",
-                fecha_resultado_biopsia_seno_BACAF: esMujer ? "1800-01-01" : "1845-01-01",
-                // --- PSA y tacto rectal (solo hombres ≥45) ---
-                resultado_PSA: (esMasculino && edad >= 45) ? "0" : "0",
-                fecha_toma_PSA: (esMasculino && edad >= 45) ? fechaAdmisionStr : "1845-01-01",
-                resultado_tacto_rectal: (esMasculino && edad >= 45) ? "0" : "0",
-                fecha_tacto_rectal: (esMasculino && edad >= 45) ? fechaAdmisionStr : "1845-01-01",
-                // --- Sangre oculta y colonoscopia (≥50 años) ---
+                resultado_mamografia_res202: (esMujer && plan.mamografia) ? fechaAdmisionStr : "1845-01-01",
+                fecha_mamografía: (esMujer && plan.mamografia) ? fechaAdmisionStr : "1845-01-01",
+                resultado_biopsia_mama: (esMujer && plan.mamografia) ? "0" : "0", // 0 = no aplica
+                fecha_toma_biopsia_seno_BACAF: (esMujer && plan.mamografia) ? "1845-01-01" : "1845-01-01",
+                fecha_resultado_biopsia_seno_BACAF: (esMujer && plan.mamografia) ? "1845-01-01" : "1845-01-01",
+                // --- PSA y tacto rectal ---
+                resultado_PSA: (esHombre && edad >= 45) ? psa : 0,
+                fecha_toma_PSA: (esHombre && edad >= 45) ? fechaPsa : "1845-01-01",
+                resultado_tacto_rectal: (esHombre && edad >= 45) ? "0" : "0",
+                fecha_tacto_rectal: (esHombre && edad >= 45) ? fechaAdmisionStr : "1845-01-01",
+                // --- Sangre oculta y colonoscopia ---
                 resultado_prueba_sangre_oculta_materia_fecal: (edad >= 50) ? "21" : "0",
                 fecha_prueba_sangre_oculta_materia_feca: (edad >= 50) ? fechaAdmisionStr : "1845-01-01",
                 resultado_colonoscopia_tamizaje: (edad >= 50) ? "21" : "0",
                 fecha_colonoscopia_tamizaje: (edad >= 50) ? fechaAdmisionStr : "1845-01-01",
-                // --- PLANIFICACIÓN FAMILIAR (corregido para ambos sexos) ---
-                // Para hombres o mujeres <10: se resta un año a la fecha de admisión (fecha válida)
-                // Para mujeres >=10: se usa la fecha de admisión real
-                planificación_familiar_primera_vez: esMujer ? (edad >= 10 ? fechaAdmisionStr : restarUnAnio(fechaAdmisionStr)) : restarUnAnio(fechaAdmisionStr),
+                // --- Planificación familiar ---
+                planificación_familiar_primera_vez: fechaMetodoAnticonceptivo,
                 suministro_metodo_anticonceptivo: "21",
-                fecha_suministro_metodo_anticonceptivo: esMujer ? (edad >= 10 ? fechaAdmisionStr : restarUnAnio(fechaAdmisionStr)) : restarUnAnio(fechaAdmisionStr),
-                // --- Hepatitis C, sífilis, VIH (según plan) ---
+                fecha_suministro_metodo_anticonceptivo: fechaMetodoAnticonceptivo,
+                // --- Hepatitis C, sífilis, VIH ---
                 resultado_tamizaje_hepatitis_C: plan.hepatitisC ? "21" : "0",
-                fecha_toma_tamizaje_hepatitis_C: plan.hepatitisC ? fechaAdmisionStr : "1845-01-01",
+                fecha_toma_tamizaje_hepatitis_C: plan.hepatitisC ? fechaHepC : "1845-01-01",
                 resultado_prueba_tamizaje_sifilis: plan.sifilis ? "21" : "0",
-                fecha_serologia_sifilis: plan.sifilis ? fechaAdmisionStr : "1845-01-01",
+                fecha_serologia_sifilis: plan.sifilis ? fechaSifilis : "1845-01-01",
                 resultado_prueba_VIH: plan.VIH ? "21" : "0",
-                fecha_tomae_elisa_VIH: plan.VIH ? fechaAdmisionStr : "1845-01-01",
+                fecha_tomae_elisa_VIH: plan.VIH ? fechaVIH : "1845-01-01",
             }
         ],
         historia_clinica_procedimientos_vacunacion: []
@@ -1016,3 +1098,31 @@ const adultez = (data) => {
     return resultado;
 };
 exports.adultez = adultez;
+// ============================================================
+// 3. CONTROLADOR HTTP (EXPRESS)
+// ============================================================
+const crearHistoriaAdultez = (req, res) => {
+    try {
+        const data = req.body;
+        if (!data) {
+            return res.status(400).json({
+                success: false,
+                message: 'El cuerpo de la petición (body) es requerido.'
+            });
+        }
+        const resultado = (0, exports.adultez)(data);
+        return res.status(200).json({
+            success: true,
+            data: resultado
+        });
+    }
+    catch (error) {
+        console.error('Error al generar la historia de adultez:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Ocurrió un error interno al procesar la solicitud.',
+            error: error.message
+        });
+    }
+};
+exports.crearHistoriaAdultez = crearHistoriaAdultez;

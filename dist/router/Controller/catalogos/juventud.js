@@ -1,18 +1,9 @@
 "use strict";
-// src/controllers/catalogos/juventud.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = juventud;
-/**
- * Catálogo de historia clínica para JUVENTUD (18-28 años).
- * Basado en Resolución 3280 de 2018 y 202 de 2021.
- * @param data - Objeto enriquecido que contiene:
- *   - admision, paciente, historia, facturacion, entidad (desde la API)
- *   - edad, generoId, generoTexto, sexoId (calculados)
- *   - datosClinicos (opcional, desde el RIPS)
- */
-function juventud(data) {
+exports.default = adolescencia;
+function adolescencia(data) {
     // ============================================================
-    // 1. EXTRAER TODOS LOS DATOS DESDE EL OBJETO data
+    // 1. EXTRAER DATOS BÁSICOS
     // ============================================================
     const admision = data?.admision || {};
     const paciente = data?.paciente || {};
@@ -25,44 +16,41 @@ function juventud(data) {
     const sexoId = data.sexoId ?? 0;
     const clinicos = data.datosClinicos || null;
     // ============================================================
-    // 2. FUNCIÓN PARA PARSEAR FECHA DE ADMISIÓN (SIEMPRE YYYY-MM-DD)
+    // 2. DETERMINAR SEXO (USANDO sexoId SEGÚN TABLA: 1=FEMENINO, 2=MASCULINO)
+    // ============================================================
+    // Si no viene sexoId, se asume MASCULINO para evitar errores
+    const esMujer = generoId === 2;
+    // ============================================================
+    // 3. FUNCIÓN PARA PARSEAR FECHA DE ADMISIÓN
     // ============================================================
     function parsearFechaAdmision(fechaInput) {
-        if (!fechaInput) {
+        if (!fechaInput)
             return new Date().toISOString().split('T')[0];
-        }
-        if (fechaInput instanceof Date) {
+        if (fechaInput instanceof Date)
             return fechaInput.toISOString().split('T')[0];
-        }
         if (typeof fechaInput === 'string' && fechaInput.startsWith('/Date(') && fechaInput.endsWith(')/')) {
             const ms = parseInt(fechaInput.slice(6, -2), 10);
-            if (!isNaN(ms)) {
+            if (!isNaN(ms))
                 return new Date(ms).toISOString().split('T')[0];
-            }
         }
         if (typeof fechaInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaInput)) {
             return fechaInput.split('T')[0];
         }
         const date = new Date(fechaInput);
-        if (!isNaN(date.getTime())) {
+        if (!isNaN(date.getTime()))
             return date.toISOString().split('T')[0];
-        }
         console.warn('Fecha no reconocida, usando hoy:', fechaInput);
         return new Date().toISOString().split('T')[0];
     }
-    // ============================================================
-    // 3. CALCULAR FECHA DE CONSULTA (SIEMPRE LA DE ADMISIÓN)
-    // ============================================================
     const fechaConsulta = parsearFechaAdmision(admision?.fecha_admision);
     // ============================================================
-    // 4. TOMAR VALORES DEL RIPS (SI EXISTEN) O USAR POR DEFECTO
+    // 4. TOMAR VALORES DEL RIPS CON SUS FECHAS
     // ============================================================
-    const peso = Number(clinicos?.antropometricos?.peso ?? 68.0);
-    const talla = Number(clinicos?.antropometricos?.talla ?? 165);
+    const peso = Number(clinicos?.antropometricos?.peso ?? 50);
+    const talla = Number(clinicos?.antropometricos?.talla ?? 155);
     const imc = peso / ((talla / 100) ** 2);
     const perimetroAbdominal = Number(clinicos?.antropometricos?.perimetro_abdominal ?? 80);
-    let pa_sist = 115;
-    let pa_diast = 75;
+    let pa_sist = 115, pa_diast = 75;
     if (clinicos?.antropometricos?.presion_arterial) {
         const pa = clinicos.antropometricos.presion_arterial;
         if (typeof pa === 'string') {
@@ -82,29 +70,51 @@ function juventud(data) {
     const temp = Number(clinicos?.signos_vitales?.temperatura ?? 36.5);
     const saturacion = Number(clinicos?.signos_vitales?.saturacion ?? 97);
     const sc = 1.2;
+    // --- Laboratorios con fechas ---
     const glicemia = clinicos?.laboratorios?.glicemia_basal?.valor ?? null;
+    const fechaGlicemia = clinicos?.laboratorios?.glicemia_basal?.fecha ?? null;
     const colesterolTotal = clinicos?.laboratorios?.colesterol_total?.valor ?? null;
+    const fechaColesterolTotal = clinicos?.laboratorios?.colesterol_total?.fecha ?? null;
     const trigliceridos = clinicos?.laboratorios?.trigliceridos?.valor ?? null;
+    const fechaTrigliceridos = clinicos?.laboratorios?.trigliceridos?.fecha ?? null;
     const hdl = clinicos?.laboratorios?.hdl?.valor ?? null;
+    const fechaHdl = clinicos?.laboratorios?.hdl?.fecha ?? null;
     const ldl = clinicos?.laboratorios?.ldl?.valor ?? null;
+    const fechaLdl = clinicos?.laboratorios?.ldl?.fecha ?? null;
     const hemoglobina = clinicos?.laboratorios?.hemoglobina?.valor ?? null;
+    const fechaHemoglobina = clinicos?.laboratorios?.hemoglobina?.fecha ?? null;
     const creatinina = clinicos?.laboratorios?.creatinina?.valor ?? null;
-    const vih = clinicos?.pruebas_rapidas?.vih?.resultado ?? null;
-    const sifilis = clinicos?.pruebas_rapidas?.sifilis?.resultado ?? null;
-    const hepatitisB = clinicos?.pruebas_rapidas?.hepatitis_b?.resultado ?? null;
-    const hepatitisC = clinicos?.pruebas_rapidas?.hepatitis_c?.resultado ?? null;
-    // Salud visual: si no hay datos, se pone null
-    let ojoDerecho = null;
-    let ojoIzquierdo = null;
-    if (clinicos?.salud_visual?.ojo_derecho) {
-        ojoDerecho = clinicos.salud_visual.ojo_derecho;
-    }
-    if (clinicos?.salud_visual?.ojo_izquierdo) {
-        ojoIzquierdo = clinicos.salud_visual.ojo_izquierdo;
-    }
+    const fechaCreatinina = clinicos?.laboratorios?.creatinina?.fecha ?? null;
+    const baciloscopia = clinicos?.laboratorios?.baciloscopia?.valor ?? null;
+    const fechaBaciloscopia = clinicos?.laboratorios?.baciloscopia?.fecha ?? null;
+    // --- Pruebas rápidas con fechas ---
+    const vihResultado = clinicos?.pruebas_rapidas?.vih?.resultado ?? null;
+    const fechaVIH = clinicos?.pruebas_rapidas?.vih?.fecha || "1845-01-01";
+    const sifilisResultado = clinicos?.pruebas_rapidas?.sifilis?.resultado ?? null;
+    const fechaSifilis = clinicos?.pruebas_rapidas?.sifilis?.fecha || "1845-01-01";
+    const hepBResultado = clinicos?.pruebas_rapidas?.hepatitis_b?.resultado ?? null;
+    const fechaHepB = clinicos?.pruebas_rapidas?.hepatitis_b?.fecha || "1845-01-01";
+    const hepCResultado = clinicos?.pruebas_rapidas?.hepatitis_c?.resultado ?? null;
+    const fechaHepC = clinicos?.pruebas_rapidas?.hepatitis_c?.fecha || "1845-01-01";
+    // --- Salud visual ---
+    const ojoDerecho = clinicos?.salud_visual?.ojo_derecho ?? null;
+    const ojoIzquierdo = clinicos?.salud_visual?.ojo_izquierdo ?? null;
+    const fechaSaludVisual = clinicos?.salud_visual?.fecha || fechaConsulta;
+    // --- Fechas de citología, colposcopia, biopsia ---
+    const fechaCitologiaInput = clinicos?.laboratorios?.citologia?.fecha || null;
+    const fechaColposcopiaInput = clinicos?.laboratorios?.colposcopia?.fecha || null;
+    const fechaBiopsiaInput = clinicos?.laboratorios?.biopsia?.fecha || null;
+    // --- Clasificaciones de riesgo ---
     const riesgoCardiovascular = clinicos?.clasificaciones_riesgo?.cardiovascular ?? null;
     const riesgoMetabolico = clinicos?.clasificaciones_riesgo?.metabolico ?? null;
-    // Estado nutricional
+    // --- HEADSS y sexual ---
+    const headss = data?.headss || clinicos?.headss || {};
+    const sexual = data?.sexual || clinicos?.sexual || {};
+    const edadInicioRelaciones = sexual.edad_inicio || '';
+    const inicioRelacionesActivo = sexual.activo ?? false;
+    // ============================================================
+    // 5. ESTADO NUTRICIONAL Y DIAGNÓSTICOS
+    // ============================================================
     let estadoNutricional = 'normal';
     if (imc >= 25 && imc < 30)
         estadoNutricional = 'sobrepeso';
@@ -119,34 +129,16 @@ function juventud(data) {
         labelIMC = 'Obesidad';
     else if (imc < 18.5)
         labelIMC = 'Bajo peso';
-    const diagnosticos = ['Z000'];
+    const codigoDiagnostico = (edad >= 10 && edad <= 19) ? "Z003" : "Z000";
+    const diagnosticos = [codigoDiagnostico];
     if (imc >= 30)
         diagnosticos.push('E660');
     // ============================================================
-    // 5. TEXTOS Y VALORES FIJOS
+    // 6. TEXTOS Y VALORES FIJOS
     // ============================================================
-    const planFijo = {
-        atencion_bucal: 0,
-        glicemia: 1,
-        ekg: 0,
-        creatinina: 1,
-        radiografia_torax: 0,
-        colesterol_total: 1,
-        citologia: 0,
-        trigliceridos: 1,
-        colposcopia: 0,
-        uroanalisis: 1,
-        mamografia: 0,
-        microalbuminuria: 1,
-        biopsia: 0,
-        prueba_covid: 1,
-        otros: '',
-    };
     let tamizajesTexto = 'Se solicitan tamizajes preventivos: glicemia, perfil lipídico, uroanálisis, pruebas rápidas para VIH, Hepatitis B y C, y Sífilis. ';
-    // Usamos generoId para los textos, pero para las validaciones usamos esMujer
-    if (generoId === 2)
+    if (sexoId === 1)
         tamizajesTexto += 'Además, se solicita citología cervicouterina. ';
-    // Textos de exploración física
     const exploracionCabeza = 'NORMOCEFALO, PUPILAS ISOCORICAS NORMOREACTIVAS A LA LUZ, FOSAS NASALES PERMEABLES, CAVIDAD ORAL NORMAL';
     const exploracionCuello = 'SIMETRICO, MOVIL, NO ADENOPATIAS, NO INGURGITACION YUGULAR';
     const exploracionTorax = 'SIMETRICO, NO DEFORMIDADES, RSCS: RITMICOS, NO SOPLOS, BIEN TIMBRADOS; CSPS: VENTILADOS, NO ESTERTORES';
@@ -157,34 +149,18 @@ function juventud(data) {
     const exploracionNeurologico = 'GLASGOW 15/15, CONCIENTE, ORIENTADO EN TIEMPO Y ESPACIO, MOTRICIDAD Y SENSIBILIDAD GENERAL CONSERVADAS';
     const exploracionPiel = 'HIDRATADA, ASPECTO Y COLORACION NORMAL, SIN LESIONES';
     const exploracionOtro = 'EMUNTORIOS NORMALES';
-    const exploracionMamas = (generoId === 2)
+    const exploracionMamas = generoId === 1
         ? 'MAMAS SIMÉTRICAS, SIN LESIONES VISIBLES, PIEL DE ASPECTO NORMAL, SIN MASAS PALPABLES, SIN DOLOR, SIN SECRECIONES.'
         : 'EXPLORACIÓN MAMARIA NO APLICA (PACIENTE MASCULINO).';
     const exploracionTactoRectal = 'TACTO RECTAL NO REALIZADO (NO INDICADO PARA TAMIZAJE EN ESTE GRUPO ETARIO SIN SINTOMATOLOGÍA).';
     // ============================================================
-    // 6. CONVERTIR VALORES NUMÉRICOS A STRINGS (para evitar problemas)
-    // ============================================================
-    const pesoStr = String(peso);
-    const tallaStr = String(talla);
-    const fcStr = String(fc);
-    const frStr = String(fr);
-    const tempStr = String(temp);
-    const saturacionStr = String(saturacion);
-    const imcStr = parseFloat(imc.toFixed(2)).toString();
-    const perimetroAbdominalStr = String(perimetroAbdominal);
-    const edadStr = String(edad);
-    // ============================================================
-    // 7. FUNCIONES DE MAPEO PARA RESOLUCION 4505 (CORREGIDAS)
+    // 7. FUNCIONES DE MAPEO
     // ============================================================
     const agudezaToCode = (valor) => {
         if (!valor)
-            return "21"; // Riesgo no evaluado
-        return "3"; // 20/20 normal (se asume que si hay valor, es normal)
+            return "3";
+        return "3";
     };
-    /**
-     * Mapea resultado de prueba rápida (VIH, sífilis) a código RIPS.
-     * Retorna { codigo, tieneResultado }
-     */
     const mapPruebaRapida = (resultado) => {
         if (!resultado)
             return { codigo: "0", tieneResultado: false };
@@ -195,9 +171,6 @@ function juventud(data) {
             return { codigo: "5", tieneResultado: true };
         return { codigo: "0", tieneResultado: false };
     };
-    /**
-     * Mapea resultado de Hepatitis B (similar a prueba rápida)
-     */
     const mapHepatitisB = (resultado) => {
         if (!resultado)
             return { codigo: "0", tieneResultado: false };
@@ -208,47 +181,135 @@ function juventud(data) {
             return { codigo: "5", tieneResultado: true };
         return { codigo: "0", tieneResultado: false };
     };
+    const vihMap = mapPruebaRapida(vihResultado);
+    const sifilisMap = mapPruebaRapida(sifilisResultado);
+    const hepBMap = mapHepatitisB(hepBResultado);
+    const hepCMap = mapPruebaRapida(hepCResultado);
+    // Fechas finales de pruebas rápidas (validando futuro)
+    const fechaVIHFinal = (fechaVIH && new Date(fechaVIH) <= new Date(fechaConsulta)) ? fechaVIH : "1845-01-01";
+    const fechaSifilisFinal = (fechaSifilis && new Date(fechaSifilis) <= new Date(fechaConsulta)) ? fechaSifilis : "1845-01-01";
+    const fechaHepBFinal = (fechaHepB && new Date(fechaHepB) <= new Date(fechaConsulta)) ? fechaHepB : "1845-01-01";
+    const fechaHepCFinal = (fechaHepC && new Date(fechaHepC) <= new Date(fechaConsulta)) ? fechaHepC : "1845-01-01";
     // ============================================================
-    // 8. DETERMINAR SEXO Y APLICAR LÓGICA CONDICIONAL (CORREGIDO)
+    // 8. PROCESAR LABORATORIOS CON SUS FECHAS
     // ============================================================
-    // Usamos los campos textuales para determinar el sexo, ya que los códigos pueden ser inconsistentes.
-    // En los datos de ejemplo, paciente.sexo_nombre = "FEMENINO" y generoTexto = "FEMENINO".
-    const esMujer = (data.paciente?.sexo_nombre === 'FEMENINO' || data.generoTexto === 'FEMENINO');
-    const esHombre = !esMujer;
-    const esMujerReproductiva = esMujer && edad >= 10;
-    // Mapear resultados de pruebas
-    const vihMap = mapPruebaRapida(vih);
-    const sifilisMap = mapPruebaRapida(sifilis);
-    const hepBMap = mapHepatitisB(hepatitisB);
-    // Fechas de pruebas rápidas
-    const fechaVIH = vihMap.tieneResultado ? fechaConsulta : "1845-01-01";
-    const fechaSifilis = sifilisMap.tieneResultado ? fechaConsulta : "1845-01-01";
-    const fechaHepB = hepBMap.tieneResultado ? fechaConsulta : "1845-01-01";
+    const procesarLaboratorio = (valor, fecha) => {
+        const num = Number(valor);
+        let fechaFinal = fecha || fechaConsulta;
+        if (fechaFinal && new Date(fechaFinal) > new Date(fechaConsulta)) {
+            fechaFinal = fechaConsulta;
+        }
+        if (num !== null && !isNaN(num) && num > 0) {
+            return { resultado: String(num), fecha: fechaFinal };
+        }
+        return { resultado: "998", fecha: "1800-01-01" };
+    };
+    const glicemiaProc = procesarLaboratorio(glicemia, fechaGlicemia);
+    const ldlProc = procesarLaboratorio(ldl, fechaLdl);
+    const hdlProc = procesarLaboratorio(hdl, fechaHdl);
+    const trigProc = procesarLaboratorio(trigliceridos, fechaTrigliceridos);
+    const hemoProc = procesarLaboratorio(hemoglobina, fechaHemoglobina);
+    const creatProc = procesarLaboratorio(creatinina, fechaCreatinina);
+    const baciloProc = procesarLaboratorio(baciloscopia, fechaBaciloscopia);
+    // Baciloscopia: si no es sintomático respiratorio, se envía "4" y fecha "1845-01-01"
+    const sintomaticoRespiratorio = "2";
+    const resultadoBaciloscopia = "4";
+    const fechaBaciloscopiaFinal = "1845-01-01";
     // ============================================================
-    // 8.1 LÓGICA PARA AGUDEZA VISUAL (CORREGIDO)
+    // 9. LÓGICA DE GESTACIÓN Y CÁNCER DE CÉRVIX (SOLO PARA MUJERES)
     // ============================================================
-    // Para >3 años, la fecha no puede ser 1845; se usa 1800 si no hay datos.
-    const tieneAgudeza = (ojoDerecho !== null && ojoIzquierdo !== null);
-    const fechaAgudeza = tieneAgudeza ? fechaConsulta : "1800-01-01";
+    let gestacion = "0";
+    let tamizajeCuello = "0";
+    let fechaTamizajeCuello = "1845-01-01";
+    let resultadoTamizajeCuello = "0";
+    let calidadMuestra = "0";
+    let codigoIPS = "0";
+    let resultadoBiopsia = "0";
+    let fechaCitologia = "1845-01-01";
+    let fechaColposcopia = "1845-01-01";
+    let fechaBiopsia = "1845-01-01";
+    let tratamientoAblativo = "0";
+    if (sexoId === 2 && edad >= 10) {
+        gestacion = "2"; // No gestante
+        // Cáncer de cérvix: si hay citología, se registra; si no, riesgo no evaluado
+        if (fechaCitologiaInput && new Date(fechaCitologiaInput) <= new Date(fechaConsulta)) {
+            tamizajeCuello = "1";
+            fechaTamizajeCuello = fechaCitologiaInput;
+            resultadoTamizajeCuello = "17"; // Negativa para lesión intraepitelial
+            calidadMuestra = "1";
+            codigoIPS = "999";
+            fechaCitologia = fechaCitologiaInput;
+            // Colposcopia
+            fechaColposcopia = (fechaColposcopiaInput && new Date(fechaColposcopiaInput) <= new Date(fechaConsulta)) ? fechaColposcopiaInput : "1845-01-01";
+            // Biopsia
+            if (fechaBiopsiaInput && new Date(fechaBiopsiaInput) <= new Date(fechaConsulta)) {
+                fechaBiopsia = fechaBiopsiaInput;
+                resultadoBiopsia = "1";
+            }
+            else {
+                fechaBiopsia = "1800-01-01";
+                resultadoBiopsia = "21";
+            }
+            tratamientoAblativo = "0";
+        }
+        else {
+            tamizajeCuello = "21";
+            fechaTamizajeCuello = "1800-01-01";
+            resultadoTamizajeCuello = "21";
+            calidadMuestra = "0";
+            codigoIPS = "0";
+            fechaCitologia = "1800-01-01";
+            fechaColposcopia = "1845-01-01";
+            fechaBiopsia = "1800-01-01";
+            resultadoBiopsia = "21";
+            tratamientoAblativo = "0";
+        }
+    }
+    else {
+        // Hombres o edad <10: todos los campos en "0" o "1845-01-01"
+        gestacion = "0";
+        tamizajeCuello = "0";
+        fechaTamizajeCuello = "1845-01-01";
+        resultadoTamizajeCuello = "0";
+        calidadMuestra = "0";
+        codigoIPS = "0";
+        resultadoBiopsia = "0";
+        fechaCitologia = "1845-01-01";
+        fechaColposcopia = "1845-01-01";
+        fechaBiopsia = "1845-01-01";
+        tratamientoAblativo = "0";
+    }
     // ============================================================
-    // 9. CONSTRUCCIÓN DEL OBJETO FINAL
+    // 10. CONSTRUCCIÓN DEL OBJETO FINAL
     // ============================================================
+    const pesoStr = String(peso);
+    const tallaStr = String(talla);
+    const fcStr = String(fc);
+    const frStr = String(fr);
+    const tempStr = String(temp);
+    const saturacionStr = String(saturacion);
+    const imcStr = parseFloat(imc.toFixed(2)).toString();
+    const perimetroAbdominalStr = String(perimetroAbdominal);
+    const edadStr = String(edad);
     return {
         // --- IDENTIFICACIÓN Y DATOS BÁSICOS ---
+        genero: generoTexto || "MASCULINO",
+        genero_id: generoId ?? 1,
+        sexo_id: sexoId ?? 2,
         id_historia: String(historia?.id_historia || 0),
         numero_historia: String(historia?.numero_historia || 0),
         hora_historia: '00:00',
         fk_servicio_ingreso: '2',
         fk_admision: String(admision.id_admision || 0),
         fk_procedimiento: '8138',
-        motivo_consulta_historia: 'RUTA_JUVENTUD',
+        motivo_consulta_historia: 'RUTA_ADOLESCENCIA',
         fk_finalidad_consulta: '11',
         IdActividad: '4',
         fk_paciente: String(paciente.id_paciente || 0),
         telefono_paciente: paciente.telefono || '',
         numero_admision: String(admision.numero_admision || 0),
         fk_factura_consultas: String(facturacion?.id_factura_consultas || 0),
-        motivo_consulta_consulta_externa: `Control de juventud (${edad} años)`,
+        motivo_consulta_consulta_externa: `Control de adolescencia (${edad} años)`,
         // --- FACTURACIÓN Y DATOS DE ADMISIÓN ---
         facturacion_admisiones: {
             fk_paciente: String(paciente.id_paciente || 0),
@@ -294,7 +355,7 @@ function juventud(data) {
             },
         },
         // --- ENFERMEDAD ACTUAL, ANÁLISIS Y REVISIONES ---
-        enfermedad_actual_historia: `Paciente de ${edad} años en control de promoción y mantenimiento (PYM) - Ruta Juventud. Sin síntomas ni signos de alarma. ${tamizajesTexto}`,
+        enfermedad_actual_historia: `Paciente de ${edad} años en control de promoción y mantenimiento (PYM) - Ruta Adolescencia. Sin síntomas ni signos de alarma. ${tamizajesTexto}`,
         analisis_historia: `Examen físico sin alteraciones. IMC ${imcStr} (${estadoNutricional}). Se generan órdenes de tamizajes preventivos. Se recomienda continuar con controles anuales.`,
         revision_sistema_general_historia: 'Sin alteraciones. Buen estado general.',
         revision_sistema_organos_sentidos_historia: 'Sin alteraciones. Visión y audición conservadas.',
@@ -342,9 +403,9 @@ function juventud(data) {
         norton_movilidad: '-1',
         norton_incontinencia: '-1',
         // --- CONDUCTA, EDUCACIÓN Y PLAN ---
-        conducta_historia: `Se realiza valoración integral en ruta Juventud. Se generan órdenes de tamizajes. Se educa en estilos de vida saludable, prevención de ITS, y salud mental. Se agenda control anual.`,
+        conducta_historia: `Se realiza valoración integral en ruta Adolescencia. Se aplican tamizajes de riesgo (suicida, violencia, consumo de SPA, trastorno alimenticio) y HEADSS. Se generan órdenes de tamizajes. Se educa en estilos de vida saludable, prevención de ITS, y salud mental. Se agenda control anual.`,
         signos_de_alarma_educacion: 'Se educa en signos de alarma: cambios bruscos de peso, cefalea intensa, dolor torácico, síntomas depresivos, consumo de sustancias.',
-        plan_tratamiento_descripcion_historia: `1. Tamizajes: ${tamizajesTexto} 2. Educación en vida saludable. 3. Control anual.`,
+        plan_tratamiento_descripcion_historia: `1. Tamizajes: ${tamizajesTexto} 2. Evaluación HEADSS y tamizajes de riesgo psicosocial. 3. Educación en vida saludable. 4. Control anual.`,
         // --- ANTECEDENTES TOXICOLÓGICOS ---
         antecedentes_toxicos_cigarrillo_cantidad_dia_historia: '0',
         antecedentes_toxicos_cigarrillo_annos_uso_historia: '0',
@@ -459,26 +520,26 @@ function juventud(data) {
         antecedetes_vacunacion_observaciones_historia: 'Esquema completo.',
         historia_clinica_procedimientos_antecedentes_quirurgicos: [],
         antecedetes_quirurgicos_observaciones_historia: 'Niega.',
-        // --- GINECO-OBSTÉTRICOS ---
-        antecedentes_gineco_obstetricos_menarca: (generoId === 2) ? '13 años' : '',
-        antecedentes_gineco_obstetricos_duracion_ciclo: (generoId === 2) ? '28 días' : '',
-        antecedentes_gineco_obstetricos_inicio_relaciones: (generoId === 2) ? '18 años' : '',
-        antecedentes_gineco_obstetricos_embarazos: (generoId === 2) ? '0' : '',
-        antecedentes_gineco_obstetricos_partos: (generoId === 2) ? '0' : '',
-        antecedentes_gineco_obstetricos_gemelar: (generoId === 2) ? '0' : '',
-        antecedentes_gineco_obstetricos_abortos: (generoId === 2) ? '0' : '',
+        // --- GINECO-OBSTÉTRICOS (solo para mujeres) ---
+        antecedentes_gineco_obstetricos_menarca: esMujer ? '13 años' : '',
+        antecedentes_gineco_obstetricos_duracion_ciclo: esMujer ? '28 días' : '',
+        antecedentes_gineco_obstetricos_inicio_relaciones: esMujer ? edadInicioRelaciones : '',
+        antecedentes_gineco_obstetricos_embarazos: esMujer ? '0' : '',
+        antecedentes_gineco_obstetricos_partos: esMujer ? '0' : '',
+        antecedentes_gineco_obstetricos_gemelar: esMujer ? '0' : '',
+        antecedentes_gineco_obstetricos_abortos: esMujer ? '0' : '',
         antecedentes_gineco_obstetricos_mamografias: 'No aplica',
         antecedentes_gineco_obstetricos_citologia: 'No aplica / se ordena.',
         antecedentes_gineco_obstetricos_ecografia: 'No aplica',
         antecedentes_gineco_obstetricos_flujos: 'Negados',
-        antecedentes_gineco_obstetricos_mestruacion: (generoId === 2) ? 'Regular' : '',
+        antecedentes_gineco_obstetricos_mestruacion: esMujer ? 'Regular' : '',
         antecedentes_gineco_obstetricos_cesarias: '0',
         antecedentes_gineco_obstetricos_menopausia: 'No aplica',
         antecedentes_gineco_obstetricos_primer_parto: '',
         antecedentes_gineco_obstetricos_ultimo_parto: '',
         fk_metodo_anticonceptivo: '0',
         antecedentes_gineco_obstetricos_grupo_sanguineo_pareja: '0',
-        antecedentes_gineco_obstetricos_observaciones: (generoId === 2) ? 'Sin antecedentes obstétricos.' : '',
+        antecedentes_gineco_obstetricos_observaciones: esMujer ? 'Sin antecedentes obstétricos.' : '',
         antecedentes_gineco_obstetricos_fecha_terminacion_ultimo_embarazo: '',
         antecedentes_gineco_obstetricos_embarazos_ectopicos: '0',
         antecedentes_gineco_obstetricos_mola: '0',
@@ -519,7 +580,7 @@ function juventud(data) {
         antecedentes_vejez_depresion: false,
         antecedentes_vejez_iatogenia: false,
         antecedentes_vejes_observaciones: '',
-        // --- HALLAZGOS FÍSICOS (SIGNOS VITALES) - TODOS EN STRING ---
+        // --- HALLAZGOS FÍSICOS (SIGNOS VITALES) ---
         hallazgos_fisicos_signos_vitales_ta_historia: `${pa_sist}/${pa_diast}`,
         hallazgos_fisicos_signos_vitales_fr_historia: frStr,
         hallazgos_fisicos_signos_vitales_t_historia: tempStr,
@@ -541,9 +602,9 @@ function juventud(data) {
         hallazgos_fisicos_otros_neurologico_historia: exploracionNeurologico,
         hallazgos_fisicos_otros_piel_historia: exploracionPiel,
         hallazgos_fisicos_otros_otro_historia: exploracionOtro,
-        // --- DIAGNÓSTICOS (TODOS EN STRING) ---
-        diagnostico_ingreso_tipo_historia: '2',
-        diagnostico_ingreso_fk_causa_externa: '1',
+        // --- DIAGNÓSTICOS ---
+        diagnostico_ingreso_tipo_historia: '1',
+        diagnostico_ingreso_fk_causa_externa: '40',
         diagnostico_ingreso_observaciones_historia: '',
         historia_clinica_enfermedades_diagnostico_ingreso: diagnosticos.map((d) => ({
             id_historia_enfermedad_diagnostico_ingreso: 0,
@@ -551,7 +612,7 @@ function juventud(data) {
             fk_enfermedad: d,
             fk_institucion: 0,
         })),
-        diagnostico_principales_observaciones_consulta_externa: `Paciente en control de juventud. ${imc >= 30 ? 'Obesidad detectada.' : 'Sin alteraciones.'}`,
+        diagnostico_principales_observaciones_consulta_externa: `Paciente en control de adolescencia. ${imc >= 30 ? 'Obesidad detectada.' : 'Sin alteraciones.'}`,
         diagnostico_relacional_tipo_historia: '0',
         diagnostico_relacional_fk_causa_externa: '0',
         diagnostico_relacional_observaciones_historia: '',
@@ -608,16 +669,16 @@ function juventud(data) {
                 hallazgos_fisicos_signos_vitales_cincurferencia_muslo_juventud: 0,
                 hallazgos_fisicos_signos_vitales_perimetro_abdominal_juventud: perimetroAbdominalStr,
                 // --- Exploración física ---
-                hallazgos_fisicos_otros_cabeza_juventud: '',
-                hallazgos_fisicos_otros_cuello_juventud: '',
-                hallazgos_fisicos_otros_torax_juventud: '',
-                hallazgos_fisicos_otros_abdomen_juventud: '',
-                hallazgos_fisicos_otros_genitourinario_juventud: '',
-                hallazgos_fisicos_otros_pelvis_juventud: '',
-                hallazgos_fisicos_otros_dorso_juventud: '',
-                hallazgos_fisicos_otros_neurologico_juventud: '',
-                hallazgos_fisicos_otros_piel_juventud: '',
-                hallazgos_fisicos_otros_otro_juventud: 'EMUNTORIOS NORMALES',
+                hallazgos_fisicos_otros_cabeza_juventud: exploracionCabeza,
+                hallazgos_fisicos_otros_cuello_juventud: exploracionCuello,
+                hallazgos_fisicos_otros_torax_juventud: exploracionTorax,
+                hallazgos_fisicos_otros_abdomen_juventud: exploracionAbdomen,
+                hallazgos_fisicos_otros_genitourinario_juventud: exploracionGenitourinario,
+                hallazgos_fisicos_otros_pelvis_juventud: exploracionPelvis,
+                hallazgos_fisicos_otros_dorso_juventud: exploracionDorso,
+                hallazgos_fisicos_otros_neurologico_juventud: exploracionNeurologico,
+                hallazgos_fisicos_otros_piel_juventud: exploracionPiel,
+                hallazgos_fisicos_otros_otro_juventud: exploracionOtro,
                 hallazgos_fisicos_otros_mamaPym_juventud: exploracionMamas,
                 hallazgos_fisicos_otros_tacto_rectalPym_juventud: exploracionTactoRectal,
                 // --- SRQ (todos false) ---
@@ -705,8 +766,8 @@ function juventud(data) {
                 valoracion_salud_visual_ojo_derecho_juventud: ojoDerecho || '20/20',
                 valoracion_salud_visual_ojo_izquierdo_juventud: ojoIzquierdo || '20/20',
                 valoracion_salud_visual_juventud: 'Agudeza visual conservada.',
-                // --- Salud sexual ---
-                valoracion_salud_sexual_observaciones_juventud: (generoId === 2)
+                // --- Salud sexual (corregido por sexo) ---
+                valoracion_salud_sexual_observaciones_juventud: esMujer
                     ? 'Sin antecedentes ginecológicos de riesgo.'
                     : 'Sin antecedentes urológicos de riesgo.',
                 salud_sexual_toma_decisiones_alrededor_de_la_sexualidad_juventud: '1',
@@ -731,6 +792,33 @@ function juventud(data) {
                 salud_sexual_su_pareja_ha_tenido_alguna_its_juventud: '2',
                 salud_sexual_su_pareja_ha_recibido_tratamiento_its_juventud: '2',
                 // --- Salud mental ---
+                tamizaje_riesgo_suicida: false,
+                tamizaje_violencia_fisica: false,
+                tamizaje_violencia_sexual: false,
+                tamizaje_consumo_alcohol: false,
+                tamizaje_consumo_spa: false,
+                tamizaje_trastorno_alimenticio: false,
+                inicio_relaciones_sexuales: inicioRelacionesActivo,
+                usa_metodo_anticonceptivo: false,
+                antecedente_embarazo: false,
+                antecedente_its: false,
+                realiza_actividad_fisica: false,
+                frecuencia_actividad_fisica: "Sin información",
+                consumo_alimentos_ultraprocesados: false,
+                horas_sueno_diario: 0,
+                vacuna_tdpa_refuerzo: false,
+                participa_grupo_juvenil: false,
+                // --- HEADSS ---
+                headss_hogar: headss.hogar || "Sin información",
+                headss_educacion: headss.educacion || "Sin información",
+                headss_actividades: headss.actividades || "Sin información",
+                headss_drogas: headss.drogas || "Sin información",
+                headss_sexualidad: headss.sexualidad || "Sin información",
+                headss_suicidio: headss.suicidio || "Sin información",
+                headss_seguridad: headss.seguridad || "Sin información",
+                agudeza_visual_od: ojoDerecho || '20/20',
+                agudeza_visual_oi: ojoIzquierdo || '20/20',
+                salud_oral_evaluacion: 'No registrado',
                 salud_mental_sospecha_de_maltrato_fisico_juventud: '2',
                 salud_mental_sospecha_de_violencia_sexual_juventud: '2',
                 salud_mental_sospecha_de_violencia_intrafamiliar_juventud: '2',
@@ -741,7 +829,6 @@ function juventud(data) {
                 salud_mental_pensamientos_o_ideas_incoherentes_juventud: '2',
                 salud_mental_victima_de_desplazamiento_juventud: '2',
                 salud_mental_consumo_de_alcohol_o_sustancias_psicoactivas: '1',
-                // --- Examen de salud mental ---
                 examen_salud_mental_apariencia_general_juventud: 'NORMAL',
                 examen_salud_mental_actitud_juventud: 'NORMAL',
                 examen_salud_mental_atencion_juventud: 'NORMAL',
@@ -804,7 +891,6 @@ function juventud(data) {
                 sucesos_vitales_leves_transgresiones_de_ley_juventud: false,
                 label_sucesos_vitales_numero_items_marcados_juventud: '0',
                 label_sucesos_vitales_puntuacion_total_juventud: '0',
-                // --- Relación con el trabajo ---
                 relacion_con_el_trabajo_antecedentes_de_trabajo_infantil_juventud: '2',
                 relacion_con_el_trabajo_tipo_de_vinculacion_laboral_juventud: '0',
                 relacion_con_el_trabajo_edad_inicio_de_su_actividad_laboral_juventud: '',
@@ -826,69 +912,66 @@ function juventud(data) {
                 apoyo_social_interpretacion_de_ecomapa_juventud: '',
                 itemsMarcadosSucesosVitalesJuventud: 0,
                 puntuacionTotalSucesosVitalesjuventud: 0,
-                // --- Asesoría en planificación familiar ---
                 asesoria_en_planificacion_familiar_metodo_elegido_juventud: null,
                 asesoria_en_planificacion_familiar_criterio_elegibilidad_OMS_juventud: '1',
-                // --- Información de salud ---
                 informacion_salud_juventud: 'Se educa en signos de alarma, hábitos de vida saludable, prevención de ITS y salud mental.',
-                // --- Plan de cuidado ---
-                plan_cuidado_atencion_en_salud_bucal_por_profesional_odontologia_juventud: planFijo.atencion_bucal,
-                plan_cuidado_glicemia_juventud: planFijo.glicemia,
-                plan_cuidado_EKG_juventud: planFijo.ekg,
-                plan_cuidado_creatinina_juventud: planFijo.creatinina,
-                plan_cuidado_radiografia_torax_juventud: planFijo.radiografia_torax,
-                plan_cuidado_colesterol_total_juventud: planFijo.colesterol_total,
-                plan_cuidado_citologia_cervico_uterina_juventud: planFijo.citologia,
-                plan_cuidado_trigliceridos_juventud: planFijo.trigliceridos,
-                plan_cuidado_colposcopia_juventud: planFijo.colposcopia,
-                plan_cuidado_uroanalisis_juventud: planFijo.uroanalisis,
-                plan_cuidado_mamografia_juventud: planFijo.mamografia,
-                plan_cuidado_microalbuminuria_juventud: planFijo.microalbuminuria,
-                plan_cuidado_biopsia_juventud: planFijo.biopsia,
-                plan_cuidado_prueba_COVID_juventud: planFijo.prueba_covid,
-                plan_cuidado_prueba_otros_juventud: planFijo.otros,
-                // --- Laboratorios ---
+                plan_cuidado_atencion_en_salud_bucal_por_profesional_odontologia_juventud: 0,
+                plan_cuidado_glicemia_juventud: 1,
+                plan_cuidado_EKG_juventud: 0,
+                plan_cuidado_creatinina_juventud: 1,
+                plan_cuidado_radiografia_torax_juventud: 0,
+                plan_cuidado_colesterol_total_juventud: 1,
+                plan_cuidado_citologia_cervico_uterina_juventud: esMujer ? 1 : 0,
+                plan_cuidado_trigliceridos_juventud: 1,
+                plan_cuidado_colposcopia_juventud: 0,
+                plan_cuidado_uroanalisis_juventud: 1,
+                plan_cuidado_mamografia_juventud: 0,
+                plan_cuidado_microalbuminuria_juventud: 1,
+                plan_cuidado_biopsia_juventud: 0,
+                plan_cuidado_prueba_COVID_juventud: 1,
+                plan_cuidado_prueba_otros_juventud: '',
+                // --- LABORATORIOS Y PRUEBAS RÁPIDAS (con fechas reales) ---
                 laboratorio_clinico_resultado_sangre_oculta_juventud: null,
                 laboratorio_clinico_fecha_sangre_oculta_juventud: fechaConsulta,
                 laboratorio_clinico_observacion_sangre_oculta_juventud: '',
-                laboratorio_clinico_resultado_colesterol_LDL_juventud: ldl,
-                laboratorio_clinico_fecha_colesterol_LDL_juventud: fechaConsulta,
+                laboratorio_clinico_resultado_colesterol_LDL_juventud: ldl !== null ? String(ldl) : null,
+                laboratorio_clinico_fecha_colesterol_LDL_juventud: (fechaLdl && new Date(fechaLdl) <= new Date(fechaConsulta)) ? fechaLdl : "1800-01-01",
                 laboratorio_clinico_observacion_colesterol_LDL_juventud: '',
-                laboratorio_clinico_resultado_colesterol_total_juventud: colesterolTotal,
-                laboratorio_clinico_fecha_colesterol_total_juventud: fechaConsulta,
+                laboratorio_clinico_resultado_colesterol_total_juventud: colesterolTotal !== null ? String(colesterolTotal) : null,
+                laboratorio_clinico_fecha_colesterol_total_juventud: (fechaColesterolTotal && new Date(fechaColesterolTotal) <= new Date(fechaConsulta)) ? fechaColesterolTotal : "1800-01-01",
                 laboratorio_clinico_observacion_colesterol_total_juventud: '',
                 laboratorio_clinico_resultado_antigeno_prostatico_juventud: null,
                 laboratorio_clinico_fecha_antigeno_prostatico_juventud: fechaConsulta,
                 laboratorio_clinico_observacion_antigeno_prostatico_juventud: '',
-                laboratorio_clinico_resultado_colesterol_HDL_juventud: hdl,
-                laboratorio_clinico_fecha_colesterol_HDL_juventud: fechaConsulta,
+                laboratorio_clinico_resultado_colesterol_HDL_juventud: hdl !== null ? String(hdl) : null,
+                laboratorio_clinico_fecha_colesterol_HDL_juventud: (fechaHdl && new Date(fechaHdl) <= new Date(fechaConsulta)) ? fechaHdl : "1800-01-01",
                 laboratorio_clinico_observacion_colesterol_HDL_juventud: '',
                 laboratorio_clinico_resultado_mamografia_juventud: null,
                 laboratorio_clinico_fecha_mamografia_juventud: fechaConsulta,
                 laboratorio_clinico_observacion_mamografia_juventud: '',
-                laboratorio_clinico_resultado_trigliceridos_juventud: trigliceridos,
-                laboratorio_clinico_fecha_trigliceridos_juventud: fechaConsulta,
+                laboratorio_clinico_resultado_trigliceridos_juventud: trigliceridos !== null ? String(trigliceridos) : null,
+                laboratorio_clinico_fecha_trigliceridos_juventud: (fechaTrigliceridos && new Date(fechaTrigliceridos) <= new Date(fechaConsulta)) ? fechaTrigliceridos : "1800-01-01",
                 laboratorio_clinico_observacion_trigliceridos_juventud: '',
-                laboratorio_clinico_resultado_glicemia_basal_juventud: glicemia,
-                laboratorio_clinico_fecha_glicemia_basal_juventud: fechaConsulta,
+                laboratorio_clinico_resultado_glicemia_basal_juventud: glicemia !== null ? String(glicemia) : null,
+                laboratorio_clinico_fecha_glicemia_basal_juventud: (fechaGlicemia && new Date(fechaGlicemia) <= new Date(fechaConsulta)) ? fechaGlicemia : "1800-01-01",
                 laboratorio_clinico_observacion_glicemia_basal_juventud: '',
-                laboratorio_clinico_resultado_creatinina_sangre_juventud: creatinina,
-                laboratorio_clinico_fecha_creatinina_sangre_juventud: fechaConsulta,
+                laboratorio_clinico_resultado_creatinina_sangre_juventud: creatinina !== null ? String(creatinina) : null,
+                laboratorio_clinico_fecha_creatinina_sangre_juventud: (fechaCreatinina && new Date(fechaCreatinina) <= new Date(fechaConsulta)) ? fechaCreatinina : "1800-01-01",
                 laboratorio_clinico_observacion_creatinina_sangre_juventud: '',
-                laboratorio_resultado_clinico_hepatitis_C_juventud: hepatitisC,
-                laboratorio_clinico_fecha_hepatitis_C_juventud: fechaConsulta,
-                laboratorio_clinico_observacion_hepatitis_C_juventud: '',
-                laboratorio_clinico_resultado_prueba_rapida_hepatitis_B_juventud: hepatitisB,
-                laboratorio_clinico_fecha_prueba_rapida_hepatitis_B_juventud: fechaConsulta,
-                laboratorio_clinico_observacion_prueba_rapida_hepatitis_B_juventud: '',
-                laboratorio_paraclinico_laboratorio_prueba_treponemica_rapida_sifilis_juventud: sifilis,
-                laboratorio_paraclinico_laboratorio_fecha_prueba_treponemica_rapida_sifilis_juventud: fechaConsulta,
-                laboratorio_clinico_observacion_prueba_treponemica_rapida_sifilis_juventud: '',
-                laboratorio_clinico_resultado_prueba_rapida_VIH_juventud: vih,
-                laboratorio_clinico_fecha_prueba_rapida_VIH_juventud: fechaConsulta,
+                laboratorio_clinico_resultado_prueba_rapida_VIH_juventud: (fechaVIHFinal === "1845-01-01") ? "0" : vihMap.codigo,
+                laboratorio_clinico_fecha_prueba_rapida_VIH_juventud: fechaVIHFinal,
                 laboratorio_clinico_observacion_prueba_rapida_VIH_juventud: '',
-                laboratorio_clinico_resultado_hemoglobina_juventud: hemoglobina,
-                laboratorio_clinico_fecha_hemoglobina_juventud: fechaConsulta,
+                laboratorio_paraclinico_laboratorio_prueba_treponemica_rapida_sifilis_juventud: (fechaSifilisFinal === "1845-01-01") ? "0" : sifilisMap.codigo,
+                laboratorio_paraclinico_laboratorio_fecha_prueba_treponemica_rapida_sifilis_juventud: fechaSifilisFinal,
+                laboratorio_clinico_observacion_prueba_treponemica_rapida_sifilis_juventud: '',
+                laboratorio_clinico_resultado_prueba_rapida_hepatitis_B_juventud: (fechaHepBFinal === "1845-01-01") ? "0" : hepBMap.codigo,
+                laboratorio_clinico_fecha_prueba_rapida_hepatitis_B_juventud: fechaHepBFinal,
+                laboratorio_clinico_observacion_prueba_rapida_hepatitis_B_juventud: '',
+                laboratorio_resultado_clinico_hepatitis_C_juventud: (fechaHepCFinal === "1845-01-01") ? "0" : hepCMap.codigo,
+                laboratorio_clinico_fecha_hepatitis_C_juventud: fechaHepCFinal,
+                laboratorio_clinico_observacion_hepatitis_C_juventud: '',
+                laboratorio_clinico_resultado_hemoglobina_juventud: hemoglobina !== null ? String(hemoglobina) : null,
+                laboratorio_clinico_fecha_hemoglobina_juventud: (fechaHemoglobina && new Date(fechaHemoglobina) <= new Date(fechaConsulta)) ? fechaHemoglobina : "1800-01-01",
                 laboratorio_clinico_observacion_hemoglobina_juventud: '',
                 laboratorio_clinico_resultado_uroanalisis_juventud: null,
                 laboratorio_clinico_fecha_uroanalisis_juventud: fechaConsulta,
@@ -1014,15 +1097,15 @@ function juventud(data) {
                 preguntas_de_whooley_p1_durante_los_ultimos_dias_se_ha_sentido_desanimado_a_menudo: false,
                 preguntas_de_whooley_p2_durante_los_ultimos_dias_ha_sentido_poco_interes: false,
                 puntuacion_test_whooley: '0',
-                escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: true,
-                escala_findrisc_con_que_frecuencia_come_frutas_verduras: '4',
+                escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: false,
+                escala_findrisc_con_que_frecuencia_come_frutas_verduras: "0",
                 escala_findrisc_le_han_recetado_alguna_vez_nedicamentos_contra_la_hta: false,
                 escala_findrisc_le_han_detectado_alguna_vez_niveles_altos_de_glucosa: false,
-                escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: '0',
-                puntuacion_escala_findrisc: '0',
-                porcentaje_escala_findrisc: '1',
+                escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "0",
+                puntuacion_escala_findrisc: "4",
+                porcentaje_escala_findrisc: "1",
                 riesgo_cardiovascular_edad_oms_juventud: edadStr,
-                riesgo_cardiovascular_sexo_oms_juventud: (generoId === 1) ? 'MASCULINO' : 'FEMENINO',
+                riesgo_cardiovascular_sexo_oms_juventud: esMujer ? 'FEMENINO' : 'MASCULINO',
                 riesgo_cardiovascular_presion_arterial_oms_juventud: `${pa_sist}/${pa_diast}`,
                 riesgo_cardiovascular_fumador_oms_juventud: false,
                 riesgo_cardiovascular_imc_oms_juventud: imcStr,
@@ -1039,74 +1122,53 @@ function juventud(data) {
             },
         ],
         // ============================================================
-        // 10. BLOQUE RESOLUCION 4505 (CORREGIDO CON VALIDACIONES)
+        // BLOQUE RESOLUCION 4505
         // ============================================================
         resolucion4505: [
             {
-                // --- Campos fijos ---
-                sintomatico_respiratorio: "2",
-                fecha_toma_baciloscopia_diagnostico: "1845-01-01",
-                resultado_baciloscopia_diagnostico: "4",
+                sintomatico_respiratorio: sintomaticoRespiratorio,
+                fecha_toma_baciloscopia_diagnostico: fechaBaciloscopiaFinal,
+                resultado_baciloscopia_diagnostico: resultadoBaciloscopia,
                 consumo_tabaco: "99",
-                clasificacion_riesgo_cardiovascular: riesgoCardiovascular ? String(riesgoCardiovascular) : "21",
-                "clasificación_riesgo_metabolico": riesgoMetabolico ? String(riesgoMetabolico) : "21",
-                tratamiento_ablativo_escision_inspeccion_visual: "0",
-                // --- Gestación (solo mujeres ≥10) ---
-                gestacion: esMujerReproductiva ? "2" : "0",
-                // --- CÁNCER DE CÉRVIX (valores fijos según tabla) ---
-                tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
-                // Se agrega el campo 87 - Fecha de tamizaje cáncer de cuello uterino
-                fecha_tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "1835-01-01" : "1845-01-01",
-                resultado_tamizaje_cancer_cuello_uterino: esMujerReproductiva ? "21" : "0",
-                calidad_muestra_citologia_cervicouterina: "0",
-                codigo_habilitacion_IPS_citologia_cervicouterina: "0",
-                resultado_biopsia_cervicouterina: esMujerReproductiva ? "21" : "0",
-                // --- Fechas de cuello uterino (biopsia siempre 1845 por validación) ---
-                citologia_cervicouterina: esMujerReproductiva ? "1800-01-01" : "1845-01-01",
-                fecha_colposcopia: esMujerReproductiva ? "1800-01-01" : "1845-01-01",
-                fecha_biopsia_cervical: esMujerReproductiva ? "1800-01-01" : "1845-01-01", // Siempre comodín (no se realiza en juventud)
-                // --- MAMA (para juventud: no aplica por edad) ---
-                fecha_mamografía: "1845-01-01",
-                resultado_mamografia_res202: "21",
-                fecha_toma_biopsia_seno_BACAF: "1845-01-01",
-                fecha_resultado_biopsia_seno_BACAF: "1845-01-01",
-                resultado_biopsia_mama: "21",
-                // --- PLANIFICACIÓN FAMILIAR ---
+                clasificacion_riesgo_cardiovascular: (edad < 18) ? "0" : (riesgoCardiovascular ? String(riesgoCardiovascular) : "21"),
+                "clasificación_riesgo_metabolico": (edad < 18) ? "0" : (riesgoMetabolico ? String(riesgoMetabolico) : "21"),
+                gestacion: "xd",
+                tratamiento_ablativo_escision_inspeccion_visual: tratamientoAblativo,
+                tamizaje_cancer_cuello_uterino: tamizajeCuello,
+                fecha_tamizaje_cancer_cuello_uterino: fechaTamizajeCuello,
+                resultado_tamizaje_cancer_cuello_uterino: resultadoTamizajeCuello,
+                calidad_muestra_citologia_cervicouterina: calidadMuestra,
+                codigo_habilitacion_IPS_citologia_cervicouterina: codigoIPS,
+                resultado_biopsia_cervicouterina: resultadoBiopsia,
+                citologia_cervicouterina: fechaCitologia,
+                fecha_colposcopia: fechaColposcopia,
+                fecha_biopsia_cervical: fechaBiopsia,
                 suministro_metodo_anticonceptivo: esMujer ? "21" : "1",
-                planificación_familiar_primera_vez: "1800-01-01",
-                fecha_suministro_metodo_anticonceptivo: "1800-01-01",
-                // --- LABORATORIOS (corregidos: si no hay dato, fecha=1800 y resultado=998) ---
+                planificación_familiar_primera_vez: esMujer ? fechaConsulta : "1800-01-01",
+                fecha_suministro_metodo_anticonceptivo: esMujer ? fechaConsulta : "1800-01-01",
                 codigo_pais: "170",
                 fecha_consulta_valoracion_integral: fechaConsulta,
-                // Glicemia
-                resultado_glicemia_basal: (glicemia !== null && glicemia > 0 && glicemia < 998) ? String(glicemia) : "998",
-                fecha_toma_glicemia_basal: (glicemia !== null && glicemia > 0 && glicemia < 998) ? fechaConsulta : "1800-01-01",
-                // LDL
-                resultado_LDL: (ldl !== null && ldl > 0 && ldl < 998) ? String(ldl) : "998",
-                fecha_toma_LDL: (ldl !== null && ldl > 0 && ldl < 998) ? fechaConsulta : "1800-01-01",
-                // HDL
-                resultado_HDL: (hdl !== null && hdl > 0 && hdl < 998) ? String(hdl) : "998",
-                fecha_toma_HDL: (hdl !== null && hdl > 0 && hdl < 998) ? fechaConsulta : "1800-01-01",
-                // Triglicéridos
-                resultado_trigliceridos: (trigliceridos !== null && trigliceridos > 0 && trigliceridos < 998) ? String(trigliceridos) : "998",
-                fecha_toma_trigliceridos: (trigliceridos !== null && trigliceridos > 0 && trigliceridos < 998) ? fechaConsulta : "1800-01-01",
-                // Hemoglobina (mantiene 1845 por ser validación especial)
-                resultado_hemoglobina: (hemoglobina !== null && hemoglobina > 0) ? String(hemoglobina) : "0",
-                fecha_toma_hemoglobina: (hemoglobina !== null && hemoglobina > 0) ? fechaConsulta : "1845-01-01",
-                // Creatinina
-                resultado_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? String(creatinina) : "998",
-                fecha_creatinina: (creatinina !== null && creatinina > 0 && creatinina < 998) ? fechaConsulta : "1800-01-01",
-                // --- Agudeza visual (CORREGIDO: fecha condicional) ---
+                resultado_glicemia_basal: glicemiaProc.resultado,
+                fecha_toma_glicemia_basal: glicemiaProc.fecha,
+                resultado_LDL: ldlProc.resultado,
+                fecha_toma_LDL: ldlProc.fecha,
+                resultado_HDL: hdlProc.resultado,
+                fecha_toma_HDL: hdlProc.fecha,
+                resultado_trigliceridos: trigProc.resultado,
+                fecha_toma_trigliceridos: trigProc.fecha,
+                resultado_hemoglobina: hemoProc.resultado,
+                fecha_toma_hemoglobina: hemoProc.fecha,
+                resultado_creatinina: creatProc.resultado,
+                fecha_creatinina: creatProc.fecha,
                 agudeza_visual_lejana_ojo_izquierdo: agudezaToCode(ojoIzquierdo),
                 agudeza_visual_lejana_ojo_derecho: agudezaToCode(ojoDerecho),
-                valoracion_agudeza_visual: fechaAgudeza, // 1800 si no hay datos
-                // --- Pruebas rápidas ---
-                resultado_antigeno_superficie_hepatitisB_toda: hepBMap.codigo,
-                fecha_antigeno_superficie_hepatitisB_toda: fechaHepB,
-                resultado_prueba_tamizaje_sifilis: sifilisMap.codigo,
-                fecha_serologia_sifilis: fechaSifilis,
-                resultado_prueba_VIH: vihMap.codigo,
-                fecha_tomae_elisa_VIH: fechaVIH,
+                valoracion_agudeza_visual: (fechaSaludVisual && new Date(fechaSaludVisual) <= new Date(fechaConsulta)) ? fechaSaludVisual : fechaConsulta,
+                resultado_prueba_VIH: (fechaVIHFinal === "1845-01-01") ? "0" : vihMap.codigo,
+                fecha_tomae_elisa_VIH: fechaVIHFinal,
+                resultado_prueba_tamizaje_sifilis: (fechaSifilisFinal === "1845-01-01") ? "0" : sifilisMap.codigo,
+                fecha_serologia_sifilis: fechaSifilisFinal,
+                resultado_antigeno_superficie_hepatitisB_toda: (fechaHepBFinal === "1845-01-01") ? "0" : hepBMap.codigo,
+                fecha_antigeno_superficie_hepatitisB_toda: fechaHepBFinal,
             },
         ],
         historia_clinica_procedimientos_vacunacion: [],

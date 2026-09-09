@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convertidor XLSX → JSON (con peso y talla)</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 950px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #f4f6f9;
+      color: #333;
+    }
+    h1 { text-align: center; color: #2c3e50; }
+    .container {
+      background: #fff;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .input-group { margin-bottom: 20px; }
+    input[type="file"] { display: block; margin-top: 10px; }
+    .options { margin: 15px 0; }
+    .options label { margin-left: 5px; font-weight: normal; }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    button:hover { background: #2980b9; }
+    pre {
+      background: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 5px;
+      max-height: 450px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .badge {
+      background: #e74c3c;
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      margin-left: 10px;
+    }
+    .info {
+      background: #eaf2f8;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>📊 Convertidor XLSX → JSON<br><small style="font-size:0.6em;">Todos los campos + Edad calculada</small></h1>
+
+  <div class="input-group">
+    <label for="excelFile"><strong>Selecciona tu archivo Excel (.xlsx / .xls):</strong></label>
+    <input type="file" id="excelFile" accept=".xlsx, .xls" />
+  </div>
+
+  <div class="options">
+    <input type="checkbox" id="includeIncomplete" checked>
+    <label for="includeIncomplete">Incluir filas con <code>num_doc</code> vacío</label>
+    <small style="display:block; color:#666; margin-top:4px;">Si está desmarcado, se excluyen filas sin número de identificación.</small>
+  </div>
+
+  <div class="options">
+    <input type="checkbox" id="removeSparse" checked>
+    <label for="removeSparse">Eliminar filas que solo tengan <code>num_doc</code> (incompletas)</label>
+    <small style="display:block; color:#666; margin-top:4px;">Recomendado: descarta registros que carecen de los demás datos.</small>
+  </div>
+
+  <div class="info" id="infoPanel">
+    <strong>Registros extraídos:</strong> <span id="countRecords">0</span>
+  </div>
+
+  <div class="actions">
+    <button id="downloadBtn" style="display: none;">⬇ Descargar JSON limpio</button>
+  </div>
+
+  <h3>Resultado JSON:</h3>
+  <pre id="jsonResult">Carga un archivo para ver el resultado aquí...</pre>
+</div>
+
+<script>
+  // ==================== MAPEO COMPLETO ====================
+  const mapeo = {
+    // --- DATOS BÁSICOS Y IDENTIFICACIÓN ---
+    "0 - TIpo de regIstro": "tipo_registro",
+    "1 - ConsecutIvo de regIstro": "consecutivo",
+    "2 - COdIgo de habIlItacIOn IPS prImarIa": "ips_hab",
+    "3 - TIpo de IdentIfIcacIOn del usuarIo": "tipo_doc",
+    "4 - Número de IdentIfIcacIOn del usuarIo": "num_doc",
+    "5 - PrImer apellIdo del usuarIo": "primer_apellido",
+    "6 - Segundo apellIdo del usuarIo ": "segundo_apellido",
+    "7 - PrImer nombre del usuarIo ": "primer_nombre",
+    "8 - Segundo nombre del usuarIo ": "segundo_nombre",
+    "9 - Fecha de NacImIento": "fecha_nacimiento",
+    "10 - Sexo": "sexo",
+    "11 - COdIgo pertenencIa EtnIca ": "etnia",
+    "12 - COdIgo de ocupacIOn (toda la poblacIOn)": "ocupacion",
+    "13 - COdIgo de nIvel educatIvo (toda la poblacIOn)": "educacion",
+    
+    // --- ESTADOS Y RESULTADOS GENERALES ---
+    "14 - GestantacIon": "gestante",
+    "15 - SIfIlIs GestacIonal o congEnIta - ": "sifilis_gest",
+    "16 - Resultado de la prueba  mInI - mental state AplI. >= 60aNos": "mini_mental",
+    "17 - HIpotIroIdIsmo CongEnIto - ": "hipotiroidismo_cong",
+    "18 - SIntomAtIco respIratorIo (toda la poblacIOn)": "sintomatico_resp",
+    "Consumo de tabaco no AplI. < 12 aNos = 98  sI AplI >= 12 aNos  = 99": "tabaco_ipa",
+    "20 - Lepra ": "lepra",
+    "21 - ObesIdad o DesnutrIcIOn ProteIco CalOrIca ": "nutricion",
+    "22 - Resultado del tacto rectal": "tacto_rectal_res",
+    "23 - AcIdo fOlIco preconcepcIonal AplI. Para Gesttantes": "acido_folico_pre",
+    "24 - Resultado de la prueba sangre oculta en materIa fecal (tamIzaje Ca de colon) AplI /50 a 76 aNos   va con la 67": "sangre_oculta_res",
+    "25 - Enfermedad Mental  =21 todos": "salud_mental",
+    "26 - CAncer de CErvIx ": "cancer_cervix",
+    "27 - Agudeza vIsual lejana ojo IzquIerdo  AplI.  >= 3 aNos =21  va con la 62": "agudeza_izq",
+    "28 - Agudeza vIsual lejana ojo derecho AplI.  >= 3 aNos =21    va con la 62": "agudeza_der",
+    "29 - Fecha del peso ": "fecha_peso",
+    "30 - Peso en KIlogramos ": "peso_kg",
+    "31 - Fecha de la talla ": "fecha_talla",
+    "32 - Talla en centImetros ": "talla_cm",
+    "33 - Fecha probable de parto": "fecha_probable_parto",
+    "34 - COdIgo paIs": "pais",
+    "35- ClasIfIcacIOn del rIesgo gestacIonal para Gestantes": "riesgo_gest",
+    "36 - Resultado de colonoscopIa tamIzaje AplI / 50 y 75 aNos  va con la 66": "colonoscopia_res",
+    "37 - Resultado de tamIzaje audItIvo neonatal": "tamizaje_auditivo_neo",
+    "38 -Resultado de tamIzaje vIsual neonatal": "tamizaje_visual_neo",
+    "39 - DPT menores de 5 aNos ": "dpt_menores5",
+    "40- Resultado de tamIzaje VALE AplI.  <= 12 aNos =21  va con la 63": "vale_res",
+    "41 -Neumococo  aplI. 3 mesee": "neumococo",
+    "42 - Resultado de tamIzaje para hepatItIs C  ????   va con la 110": "hepatitis_c_res",
+    "43 - Resultado de escala abrevIada de desarrollo Area de motrIcIdad gruesa     0 a 7 aNos va con 52": "motricidad_gruesa",
+    "44 - Resultado de escala abrevIada de desarrollo Area de motrIcIdad fInoadaptatIva        0 a 7 aNos va con 52": "motricidad_fina",
+    "45 - Resultado de escala abrevIada de desarrollo Area personal socIal         0 a 7 aNos va con 52": "personal_social",
+    "46 - Resultado de escala abrevIada de desarrollo Area de motrIcIdad audIcIOn lenguaje    0 a 7 aNos va con 52": "audicion_lenguaje",
+    "47 - TratamIento ablatIvo o de escIsIOn posterIor a la realIzacIOn de la tEcnIca de InspeccIOn vIsual (CrIoterapIa o LETZ)": "tratamiento_cervix",
+    "48 - Resultado de tamIzacIOn con oxImetrIa pre y post ductal": "oximetria_res",
+    "49 - Fecha de atencIOn parto o cesArea              AplI. PlanIfIcadoras": "fecha_parto_cesarea",
+    "50 - Fecha de salIda de atencIOn parto o cesArea AplI. PlanIfIcadoras": "fecha_salida_parto",
+    "51  Fecha de atencIOn en salud para la promocIOn y apoyo de la lactancIa materna AplI. Gestantes y nINos < a 3 meses": "fecha_lactancia_materna",
+    "52 Fecha de consulta de valoracIOn Integral (Para todas las edades)": "fecha_valoracion_integral",
+    "53 Fecha de atencIOn en salud para la asesorIa en antIconcepcIOn AplI. 10 aNos hasta 59 aNos toda la poblacIon": "fecha_asesoria_anticoncepcion",
+    "54 SumInIstro de mEtodo antIconceptIvo": "anticoncepcion_metodo",
+    "55 - Fecha de sumInIstro de mEtodo antIconceptIvo  AplI. 10 aNos hasta 59 aNos toda la poblacIon": "fecha_suministro_anticonceptivo",
+    "56 - Fecha de prImera consulta prenatal        para Gestantes": "fecha_primera_prenatal",
+    "57 - Resultado de glIcemIa basal AplI. >= 18 aNos y Gestantes  va con la 105": "glicemia_basal_res",
+    "58 - Fecha de últImo control prenatal de seguImIento para Gestantes": "fecha_ultimo_control_prenatal",
+    "59- SumInIstro de acIdo fOlIco en el control prenatal durante el perIodo reportado": "suministro_acido_folico",
+    "60 - SumInIstro de sulfato ferroso en el control prenatal durante el perIodo reportado": "suministro_sulfato_ferroso",
+    "61 - SumInIstro de carbonato de calcIo en el control prenatal durante el perIodo reportado": "suministro_carbonato_calcio",
+    "62 Fecha de valoracIOn agudeza vIsual  AplI. >= 3 aNos    va con la 27 y 28": "fecha_agudeza_visual",
+    "63  Fecha de tamIzaje VALE AplI.  <= 12 aNos 1800-01-01     con la 40": "fecha_tamizaje_vale",
+    "64  Fecha del tacto rectal": "fecha_tacto_rectal",
+    "65  Fecha de tamIzacIOn con oxImetrIa pre y post ductal": "fecha_oximetria",
+    "66  Fecha de realIzacIOn colonoscopIa tamIzaje  AplI. >= 50 Y 75 aNos va con la 36": "fecha_colonoscopia",
+    "67  Fecha de la prueba sangre oculta en materIa fecal (tamIzaje Ca de colon)  AplIca >= 50 aNos = 21 va con la 24": "fecha_sangre_oculta",
+    "68 - Consulta de PsIcologIa ": "fecha_consulta_psicologia",
+    "69 - Fecha de tamIzaje audItIvo neonatal": "fecha_tamizaje_auditivo",
+    "70 - SumInIstro de  fortIfIcacIOn casera en la prImera InfancIa     (6 a 23 meses)": "suministro_fortificacion",
+    "71 - SumInIstro de vItamIna A en la prImera InfancIa   AplI. (2 a 5 aNos)": "suministro_vitamina_a",
+    "72 - Fecha de toma LDL  AplI. >= 29 aNos  Va con la 92": "fecha_toma_ldl",
+    "73 - Fecha de toma PSA  va con la 109": "fecha_toma_psa",
+    "74 - PreservatIvos entregados a pacIentes con ITS ": "preservativos_its_1",
+    "75 - Fecha de tamIzaje vIsual neonatal": "fecha_tamizaje_visual",
+    "76 - Fecha de atencIOn en salud bucal por profesIonal en odontologIa aplI. >=6 mese Va con la 102 C-PLA": "fecha_odontologia",
+    "77 - SumInIstro de hIerro en la prImera InfancIa (24 a 59 meses)": "suministro_hierro",
+    "78 - Fecha de antIgeno de superfIcIe hepatItIs B": "fecha_toma_antigeno_hepatitis_b",
+    "79 - Resultado de antIgeno de superfIcIe hepatItIs B ": "hepatitis_b_res",
+    "80 - Fecha de toma de prueba tamIzaje para sIfIlIs  (Toda la poblacIOn)": "fecha_toma_sifilis",
+    "81 - Resultado de prueba tamIzaje para sIfIlIs  (Toda la poblacIOn)": "sifilis_tamizaje_res",
+    "82 - Fecha de toma de prueba para VIH  (Toda la poblacIOn)": "fecha_toma_vih",
+    "83 - Resultado de prueba para VIH  (Toda la poblacIOn)": "vih_res",
+    "84 -Fecha de TSH neonatal": "fecha_tsh_neonatal",
+    "85 - Resultado de TSH neonatal": "tsh_neonatal_res",
+    "86 - TamIzaje del cAncer de cuello uterIno ": "tamizaje_cervix_tipo",
+    "87 - Fecha de tamIzaje cAncer de cuello uterIno": "fecha_tamizaje_cervix",
+    "88- Resultado tamIzaje cAncer de cuello uterIno (21)": "tamizaje_cervix_res",
+    "89 - CalIdad en la muestra de cItologIa cervIcouterIna   aplI.  >= 10 aNos  mujer": "citologia_calidad",
+    "90 - COdIgo de habIlItacIOn IPS donde se realIza  tamIzaje cAncer de cuello uterIno aplI.  >= 10 aNos  mujer": "ips_tamizaje_cervix",
+    "91 - Fecha de colposcopIa": "fecha_colposcopia",
+    "92 - Resultado de LDL AplI. >= 29 aNos va con la 72": "ldl_res",
+    "93 - Fecha de bIopsIa cervIcouterIna": "fecha_biopsia_cervix",
+    "94 - Resultado de bIopsIa cervIcouterIna": "biopsia_cervix_res",
+    "95 - Resultado de HDL  AplI  >= 29 aNos  Va con la  111": "hdl_res",
+    "96 - Fecha de toma de mamografIa": "fecha_toma_mamografia",
+    "97- Resultado de mamografIa": "mamografia_res",
+    "98 - Resultado de trIglIcErIdos AplI. >= 29 aNos  va con la 118": "trigliceridos_res",
+    "99 - Fecha de toma bIopsIa de mama": "fecha_toma_biopsia_mama",
+    "100 - Fecha de resultado bIopsIa de mama": "fecha_resultado_biopsia_mama",
+    "101 - Resultado de bIopsIa de mama": "biopsia_mama_res",
+    "102 COP por persona  C-Placa  AplI. >= 6 meses   Va con la 76": "cop_odontologia",
+    "103 - Fecha de toma hemoglobIna AplI. >= 10 toda  F y M ": "fecha_toma_hemoglobina",
+    "104 - Resultado de hemoglobIna": "hemoglobina_res",
+    "105 - Fecha de toma glIcemIa basal AplI. >= 18 aNos y Gestantes  va con la 57": "fecha_toma_glicemia",
+    "106 - Fecha de toma creatInIna": "fecha_toma_creatinina",
+    "107 - Resultado de creatInIna": "creatinina_res",
+    "108 - PreservatIvos entregados a pacIentes con ITS -": "preservativos_its_2",
+    "109 - Resultado de PSA  va con la 73 prostata": "psa_res",
+    "110 - Fecha de toma  de tamIzaje hepatItIs C   ??? va con la 42": "fecha_toma_hepatitis_c",
+    "111 - Fecha de toma HDL  AplI. >= 29 aNos  Va con la  95": "fecha_toma_hdl",
+    "112 - Fecha de toma de bacIloscopIa dIagnOstIco ": "fecha_toma_baciloscopia",
+    "113 - Resultado de bacIloscopIa dIagnOstIco": "baciloscopia_res",
+    "114 - ClasIfIcacIOn del rIesgo cardIovascular ": "frecuencia_cardiaco_riesgo",
+    "115 - TratamIento para sIfIlIs gestacIonal ": "sifilis_gest_tratamiento",
+    "116 - TratamIento para SIfIlIs CongEnIta-  ": "sifilis_cong_tratamiento",
+    "117 - ClasIfIcacIOn del rIesgo metabOlIco": "riesgo_metabolico",
+    "118 - Fecha de toma trIglIcErIdos AplI. >= 29 aNos  va con la 98": "fecha_toma_trigliceridos"
+  };
+
+  let generatedJson = null;
+
+  // Función para calcular la edad exacta en años según la fecha dada
+  function calcularEdad(fechaVal) {
+    if (!fechaVal) return null;
+    let fechaNac;
+
+    // Si Excel importó la fecha como entero serial
+    if (typeof fechaVal === 'number') {
+      const parsedDate = XLSX.SSF.parse_date_code(fechaVal);
+      if (parsedDate) {
+        fechaNac = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
+      }
+    } else {
+      // Si viene como string tipo "2010-09-02" o similar
+      fechaNac = new Date(fechaVal);
+    }
+
+    if (!fechaNac || isNaN(fechaNac.getTime())) return null;
+
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    const mesDiff = hoy.getMonth() - fechaNac.getMonth();
+
+    if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < fechaNac.getDate())) {
+      edad--;
+    }
+
+    return edad >= 0 ? edad : null;
+  }
+
+  function procesarArchivo() {
+    const fileInput = document.getElementById('excelFile');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      const includeIncomplete = document.getElementById('includeIncomplete').checked;
+      const removeSparse = document.getElementById('removeSparse').checked;
+      const result = {};
+
+      workbook.SheetNames.forEach(function(sheetName) {
+        const roa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 0 });
+
+        // Transformar cada fila usando el mapeo
+        let filasTransformadas = roa.map(fila => {
+          const obj = {};
+          for (const claveLarga of Object.keys(fila)) {
+            if (mapeo.hasOwnProperty(claveLarga)) {
+              const claveCorta = mapeo[claveLarga];
+              obj[claveCorta] = fila[claveLarga];
+
+              // Si es la fecha de nacimiento, calcular también la edad como entero
+              if (claveCorta === 'fecha_nacimiento') {
+                obj['edad'] = calcularEdad(fila[claveLarga]);
+              }
+            }
+          }
+          return obj;
+        });
+
+        // Filtrar por num_doc si es necesario
+        if (!includeIncomplete) {
+          filasTransformadas = filasTransformadas.filter(fila => {
+            const val = fila.num_doc;
+            return val !== undefined && val !== null && val !== '';
+          });
+        }
+
+        // Eliminar filas que solo tengan num_doc (incompletas)
+        if (removeSparse) {
+          filasTransformadas = filasTransformadas.filter(fila => {
+            const keys = Object.keys(fila);
+            if (keys.length === 1 && keys[0] === 'num_doc') return false;
+
+            const hasOtherData = keys.some(k => k !== 'num_doc' && fila[k] !== undefined && fila[k] !== null && fila[k] !== '');
+            return hasOtherData;
+          });
+        }
+
+        // Eliminar filas completamente vacías
+        filasTransformadas = filasTransformadas.filter(fila => {
+          return Object.values(fila).some(v => v !== undefined && v !== null && v !== '');
+        });
+
+        if (filasTransformadas.length) {
+          result[sheetName] = filasTransformadas;
+        }
+      });
+
+      generatedJson = result;
+
+      // Mostrar JSON
+      const jsonString = JSON.stringify(result, null, 2);
+      document.getElementById('jsonResult').textContent = jsonString;
+
+      // Contar registros totales
+      let total = 0;
+      for (const hoja of Object.keys(result)) {
+        total += result[hoja].length;
+      }
+      document.getElementById('countRecords').textContent = total;
+
+      document.getElementById('downloadBtn').style.display = 'inline-block';
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Evento al cargar archivo
+  document.getElementById('excelFile').addEventListener('change', procesarArchivo);
+
+  // Reprocesar al cambiar cualquiera de los checkboxes
+  document.getElementById('includeIncomplete').addEventListener('change', procesarArchivo);
+  document.getElementById('removeSparse').addEventListener('change', procesarArchivo);
+
+  // Descargar JSON
+  document.getElementById('downloadBtn').addEventListener('click', function() {
+    if (!generatedJson) return;
+
+    const blob = new Blob([JSON.stringify(generatedJson, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'data_limpia.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+
+</body>
+</html>
