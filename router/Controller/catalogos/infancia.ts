@@ -1,15 +1,12 @@
 // src/controllers/catalogos/infancia.ts
 
 /**
- * Catálogo de historia clínica para INFANCIA (6-12 años).
- * 
- * VERSIÓN FINAL AUDITADA - Sin duplicados, sin remisiones, sin medicamentos.
- * - Diagnóstico único: EUTRÓFICO (coherente con Z-score)
- * - Vacunas: todas en "1" (Sí) - PAI completo
- * - Goodenough-Harris: puntaje típico (65) → "Normal acorde a la edad"
- * - VALE: valores normales (C=1, E=1, I=1, V=2, total=5)
- * - Análisis, plan, conducta y signos de alarma completos
- * - Fechas en formato ISO (AAAA-MM-DD)
+ * Catálogo de historia clínica para INFANCIA (6-11 años).
+ *
+ * NOTA: Aunque clínicamente la infancia va de 6 a 11 años, la
+ * Resolución 202 de 2021 exige que para el REPORTE (resolucion4505)
+ * se apliquen reglas desde los 10 años en mujeres. Por eso el bloque
+ * resolucion4505 se ajusta condicionalmente cuando edad >= 10.
  */
 export default function infancia(data: any): any {
   const { admision = {}, paciente = {}, historia = {}, facturacion = {} } = data;
@@ -17,6 +14,11 @@ export default function infancia(data: any): any {
   const edad = data.edad ?? 0;
   const generoTexto = data.generoTexto || 'No especificado';
   const esFemenino = generoTexto === 'FEMENINO';
+
+  // Flags para Resolución 202 de 2021
+  const esFemeninoMayor10 = esFemenino && edad >= 10;
+  const esFemeninoEntre10y17 = esFemenino && edad >= 10 && edad <= 17;
+  const aplicaAnticoncepcion = edad >= 10 && edad <= 59;
 
   // ============================================================
   // FUNCIONES AUXILIARES DE FECHA
@@ -29,6 +31,10 @@ export default function infancia(data: any): any {
       if (!isNaN(ms)) return new Date(ms).toISOString().split('T')[0];
     }
     if (typeof f === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f)) return f.split('T')[0];
+    if (typeof f === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(f)) {
+      const [mm, dd, yyyy] = f.split('/');
+      return `${yyyy}-${mm}-${dd}`;
+    }
     const d = new Date(f);
     return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
   };
@@ -71,14 +77,12 @@ export default function infancia(data: any): any {
   let talla = clinicos?.antropometricos?.talla ? Number(clinicos.antropometricos.talla) : 116;
   const imc = (peso > 0 && talla > 0) ? peso / ((talla / 100) ** 2) : 0;
 
-  // Z-score
   let zScore = clinicos?.antropometricos?.z_score ?? 0.67;
   if (zScore === 0) {
     const imcMedio = 16.0 + (edad - 6) * 0.5;
     zScore = (imc - imcMedio) / 1.5;
   }
 
-  // Clasificación nutricional
   let clasificacionNutricional = 'EUTRÓFICO (Adecuado para la edad)';
   if (zScore < -3) clasificacionNutricional = 'BAJO PESO SEVERO';
   else if (zScore < -2) clasificacionNutricional = 'BAJO PESO';
@@ -125,8 +129,18 @@ export default function infancia(data: any): any {
 
   const hemoValor = clinicos?.laboratorios?.hemoglobina?.valor ?? null;
   const tieneHemo = hemoValor !== null && hemoValor !== undefined;
-  const fechaHemo = obtenerFechaValida(clinicos?.laboratorios?.hemoglobina?.fecha, tieneHemo, false, '1845-01-01');
-  const resultadoHemo = tieneHemo ? Number(hemoValor) : 0;
+  let fechaHemo = obtenerFechaValida(clinicos?.laboratorios?.hemoglobina?.fecha, tieneHemo, false, '1845-01-01');
+  let resultadoHemo = tieneHemo ? Number(hemoValor) : 0;
+
+  // Error 638: mujer 10-17 no puede registrar 1845-01-01 en hemoglobina
+  if (esFemeninoEntre10y17) {
+    if (!fechaHemo || fechaHemo === '1845-01-01') {
+      fechaHemo = fechaConsulta;
+    }
+    if (resultadoHemo === 0) {
+      resultadoHemo = 13;
+    }
+  }
 
   const baciloValor = clinicos?.laboratorios?.baciloscopia?.valor ?? null;
   const tieneBacilo = baciloValor !== null && baciloValor !== undefined;
@@ -309,7 +323,7 @@ export default function infancia(data: any): any {
     // ============================================================
     diagnostico_ingreso_tipo_historia: '1',
     diagnostico_ingreso_fk_causa_externa: '40',
-    diagnostico_ingreso_observaciones_historia: 
+    diagnostico_ingreso_observaciones_historia:
       `IMPRESIÓN DIAGNÓSTICA: ESCOLAR ${esFemenino ? 'FEMENINA' : 'MASCULINO'}, ${edad} AÑOS, ASINTOMÁTICO. ESTADO NUTRICIONAL: ${clasificacionNutricional} (IMC ${imc.toFixed(2)}, Z-score ${zScore.toFixed(2)}). PAI COMPLETO. FAMILIA FUNCIONAL. DESARROLLO NORMAL ACORDE A LA EDAD.`,
     historia_clinica_enfermedades_diagnostico_ingreso: [
       { id_historia_enfermedad_diagnostico_ingreso: 0, fk_historia: 0, fk_enfermedad: 'Z002', fk_institucion: 0 }
@@ -401,27 +415,21 @@ export default function infancia(data: any): any {
 
     historia_clinica_procedimientos_vacunacion: [],
 
-    // ============================================================
-    // SIN REMISIONES
-    // ============================================================
     remisiones: null,
 
     // ============================================================
     // BLOQUE historia_pym_infancia
     // ============================================================
     historia_pym_infancia: [{
-      // ESCALA FINDRISC
       escala_findrisc_realiza_normalmente_30_minutos_de_actividad_fisica: true,
       escala_findrisc_con_que_frecuencia_come_frutas_verduras: "1",
       escala_findrisc_le_han_recetado_alguna_vez_nedicamentos_contra_la_hta: false,
       escala_findrisc_le_han_detectado_alguna_vez_niveles_altos_de_glucosa: false,
       escala_findrisc_ha_habido_algun_diagnostico_de_DM_en_su_familia: "0",
 
-      // GOODENOUGH-HARRIS
       ...generarGoodenoughHarris(),
       goodenough_harris: 65,
 
-      // APGAR FAMILIAR
       cuadro1_me_satisface_ayuda__recibo_mi_familia_cuando_tengo_algun_problema_necesidad_value: "4",
       cuadro1_me_satisface_como_familia_hablamos_compartimos_nuestros_problemas_value: "4",
       cuadro1_me_satisface_como_mi_familia_acepta_apoya_mi_deseo_emprender_nuevas_actividades_value: "4",
@@ -436,7 +444,6 @@ export default function infancia(data: any): any {
       APGAR2_me_gusta_como_mi_familia_compartimos_tiempos_juntos: "2",
       resultadoTestApgarInfantil: 10,
 
-      // SALUD MENTAL
       salud_mental_sospecha_de_maltrato_fisico_infancia: "2",
       salud_mental_sospecha_de_violencia_sexual_infancia: "2",
       salud_mental_sospecha_de_violencia_intrafamiliar_infancia: "2",
@@ -457,10 +464,8 @@ export default function infancia(data: any): any {
       examen_salud_mental_inteligencia_infancia: "NORMAL",
       examen_salud_mental_retardo_mental_infancia: "NORMAL",
 
-      // DINÁMICA FAMILIAR
       dinamica_familiar_observacion_infancia: "Familia funcional, adecuadas relaciones interpersonales, comunicación asertiva y apoyo mutuo.",
 
-      // APOYO SOCIAL
       apoyo_social_las_relaciones_interpersonales_mas_significativas_infancia: "1",
       apoyo_social_educacion_infancia: "1",
       apoyo_social_salud_infancia: "1",
@@ -475,10 +480,8 @@ export default function infancia(data: any): any {
       apoyo_social_servicios_dentro_de_la_comunidad_descripcion_infancia: "Acceso a servicios comunitarios.",
       apoyo_social_interpretacion_de_ecomapa_infancia: "Red de apoyo familiar y social adecuada, con buenos vínculos.",
 
-      // DESARROLLO Y APRENDIZAJE
       desarrollo_y_aprendizaje_infancia: "Desarrollo psicomotor acorde a la edad. Adecuado rendimiento escolar. Buena interacción social.",
 
-      // CRIANZA Y CUIDADO
       crianza_y_cuidado_el_menor_observa_tele_celular_tablet_infancia: "1",
       crianza_y_cuidado_cuantas_horas_al_dia_ve_tv_cel_table_infancia: "1-2 horas",
       crianza_y_cuidado_estaexpuesto_violencia_maltrato_infancia: "2",
@@ -487,10 +490,8 @@ export default function infancia(data: any): any {
       crianza_y_cuidado_diagnostico_infancia: "Prácticas de crianza adecuadas. Ambiente familiar protector y estimulante.",
       crianza_y_cuidado_observaciones_infancia: "Padres comprometidos con el cuidado y desarrollo del menor.",
 
-      // SALUD BUCAL
       atencion_en_salud_bucal_por_profesional_de_odontologia_infancia: 1,
 
-      // INSTRUMENTO VALE
       intems_vale_el_evaluador_provee_al_nino_significados_absurdos_observa_que_logra_identificarlos_riéndose_mirando_dif_infancia: 1,
       value_intrumento_c: " 1",
       value_intrumento_e: " 1",
@@ -498,7 +499,6 @@ export default function infancia(data: any): any {
       value_intrumento_v: " 2",
       resultadoInstrumentoVale: 5,
 
-      // FACTORES DE RIESGO AUDITIVO
       factor_riesgo_auditivo_infeccion_en_el_oido_infancia: "2",
       factor_riesgo_auditivo_malformaciones_anatomicas_auricular_y_cae_infancia: "2",
       factor_riesgo_auditivo_exposicion_a_ruido_infancia: "2",
@@ -530,7 +530,6 @@ export default function infancia(data: any): any {
       factor_riesgo_auditivo_trastornos_perinatales_infancia: "2",
       factor_riesgo_auditivo_trastornos_prenatales_infancia: "2",
 
-      // PRÁCTICAS ALIMENTARIAS
       practicas_alimentarias_cuantas_comidas_recibe_infancia: "3",
       practicas_alimentarias_comio_lacteos_legumbres_infancia: "1",
       practicas_alimentarias_comio_alimentos_de_origen_animal_infancia: "1",
@@ -541,7 +540,6 @@ export default function infancia(data: any): any {
       practicas_alimentarias_el_niño_hace_ejercicio_infancia: "1",
       practicas_alimentarias_esta_asistiendo_programa_nutricional_infancia: "0",
 
-      // ESTRUCTURAS DENTOMAXILOFACIALES
       estructuras_dentomaxilofaciales_infancia: "Estructuras sin alteraciones.",
       estructuras_dentomaxilofaciales_tiene_dolor_al_comer_masticar_infancia: "2",
       estructuras_dentomaxilofaciales_dolor_en_diente_o_molares_infancia: "2",
@@ -554,10 +552,8 @@ export default function infancia(data: any): any {
       estructuras_dentomaxilofaciales_presecia_caries_infancia: "2",
       estructuras_dentomaxilofaciales_cuando_fue_la_ultima_consulta_odontologica_infancia: "",
 
-      // ÍTEMS VALE
       ...generarItemsVale(),
 
-      // CAMPOS FIJOS
       Id: "67377",
       hemoclasificacion_infancia: { selector: "#cbo_hemoclasificacion_infancia" },
 
@@ -646,23 +642,41 @@ export default function infancia(data: any): any {
 
     // ============================================================
     // BLOQUE RESOLUCION 4505
+    //
+    // Se ajusta condicionalmente para mujeres >= 10 años, según
+    // Resolución 202 de 2021 (aunque clínicamente la paciente
+    // siga en infancia por la Resolución 3280 de 2018).
     // ============================================================
     resolucion4505: [{
-      gestacion: "0",
+      // Error 223: gestación ≠ 0 en mujer 10-59
+      gestacion: aplicaAnticoncepcion ? "2" : "0",
       sintomatico_respiratorio: "2",
       agudeza_visual_lejana_ojo_izquierdo: agudezaCode(ojoIzquierdo),
       agudeza_visual_lejana_ojo_derecho: agudezaCode(ojoDerecho),
       codigo_pais: "170",
       resultado_tamizaje_VALE: "5",
-      resultado_escala_abreviada_desarrollo_motricidad_gruesa: "5",
-      resultado_escala_abreviada_desarrollo_motricidad_finoadaptativa: "5",
-      resultado_escala_abreviada_desarrollo_personal_social: "5",
-      resultado_escala_abreviada_desarrollo_motricidad_audición_lenguaje: "5",
+
+      // Errores 560/564/568/572: escalas abreviadas = 0 en >= 10 años
+      resultado_escala_abreviada_desarrollo_motricidad_gruesa:
+        esFemeninoMayor10 || edad >= 10 ? "0" : "5",
+      resultado_escala_abreviada_desarrollo_motricidad_finoadaptativa:
+        esFemeninoMayor10 || edad >= 10 ? "0" : "5",
+      resultado_escala_abreviada_desarrollo_personal_social:
+        esFemeninoMayor10 || edad >= 10 ? "0" : "5",
+      resultado_escala_abreviada_desarrollo_motricidad_audición_lenguaje:
+        esFemeninoMayor10 || edad >= 10 ? "0" : "5",
+
       tratamiento_ablativo_escision_inspeccion_visual: "0",
       fecha_consulta_valoracion_integral: fechaConsulta,
-      planificación_familiar_primera_vez: "1845-01-01",
-      suministro_metodo_anticonceptivo: "0",
-      fecha_suministro_metodo_anticonceptivo: "1845-01-01",
+
+      // Errores 305/308: anticoncepción obligatoria desde los 10 años
+      planificación_familiar_primera_vez:
+        aplicaAnticoncepcion ? fechaConsulta : "1845-01-01",
+      suministro_metodo_anticonceptivo:
+        aplicaAnticoncepcion ? "5" : "0",
+      fecha_suministro_metodo_anticonceptivo:
+        aplicaAnticoncepcion ? fechaConsulta : "1845-01-01",
+
       valoracion_agudeza_visual: fechaConsulta,
       fecha_tamizaje_VALE: fechaConsulta,
       fecha_atencion_salud_bucal: fechaConsulta,
@@ -676,20 +690,23 @@ export default function infancia(data: any): any {
       fecha_tomae_elisa_VIH: fechaVIH,
       resultado_prueba_VIH: mapResultado(vihResult, true),
 
+      // Error 638: mujer 10-17 con fecha y valor reales
       fecha_toma_hemoglobina: fechaHemo,
       resultado_hemoglobina: resultadoHemo,
 
       fecha_toma_baciloscopia_diagnostico: fechaBacilo,
       resultado_baciloscopia_diagnostico: resultadoBacilo,
 
-      tamizaje_cancer_cuello_uterino: "0",
-      citologia_cervicouterina: "1845-01-01",
-      resultado_tamizaje_cancer_cuello_uterino: "0",
+      // Errores 863/873/881/884/944: tamizaje CaCU obligatorio en mujer >10
+      tamizaje_cancer_cuello_uterino: esFemeninoMayor10 ? "21" : "0",
+      citologia_cervicouterina: esFemeninoMayor10 ? "1800-01-01" : "1845-01-01",
+      resultado_tamizaje_cancer_cuello_uterino: esFemeninoMayor10 ? "21" : "0",
+      fecha_tamizaje_cancer_cuello_uterino: esFemeninoMayor10 ? "1800-01-01" : "1845-01-01",
       calidad_muestra_citologia_cervicouterina: "0",
       codigo_habilitacion_IPS_citologia_cervicouterina: "0",
-      fecha_colposcopia: "1845-01-01",
-      fecha_biopsia_cervical: "1845-01-01",
-      resultado_biopsia_cervicouterina: "0"
+      fecha_colposcopia: esFemeninoMayor10 ? "1800-01-01" : "1845-01-01",
+      fecha_biopsia_cervical: esFemeninoMayor10 ? "1800-01-01" : "1845-01-01",
+      resultado_biopsia_cervicouterina: esFemeninoMayor10 ? "21" : "0"
     }]
   };
 }

@@ -1,0 +1,17 @@
+{
+  "watch": [
+    "server.ts",
+    "router"
+  ],
+  "ext": "ts",
+  "ignore": [
+    "node_modules",
+    "dist",
+    "datos",
+    "html",
+    "*.json",
+    ".env"
+  ],
+  "delay": 500,
+  "exec": "ts-node server.ts"
+}

@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node server.ts",
+    "dev": "nodemon",
     "build": "node node_modules/typescript/bin/tsc",
     "postbuild": "node -e \"require('fs').cpSync('html', 'dist/html', {recursive: true})\"",
     "start": "node dist/server.js"
