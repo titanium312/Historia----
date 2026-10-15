@@ -18,7 +18,36 @@ const COOKIES = [
 const FECHA_LIMITE = new Date(2025, 0, 1); // 2025-01-01
 
 // -------------------------------------------------------------------
-// 2. Función que llama a la API externa con todos los headers
+// 2. Diccionario de estados (ajusta según descubras más códigos)
+// -------------------------------------------------------------------
+const ESTADOS: Record<string, string> = {
+  '0': 'Libre',
+  '1': 'Historia',
+  '2': 'Ordenes medica',
+  '3': 'Desconocido',
+  '4': 'Notas enfermeria',
+  '5': 'Remision',
+   "8":"bloqueda"
+};
+
+// -------------------------------------------------------------------
+// 3. Tipos para la respuesta limpia
+// -------------------------------------------------------------------
+interface Admision {
+  idAdmision: string;
+  admision: string;
+  documento: string;
+  nombre: string;
+  entidad: string;
+  fecha: string;
+  hora: string;
+  codigoA: string;
+  codigoB: string;
+  estado: string;
+}
+
+// -------------------------------------------------------------------
+// 4. Función que llama a la API externa
 // -------------------------------------------------------------------
 async function llamarApiExterna(
   busqueda: string,
@@ -39,7 +68,7 @@ async function llamarApiExterna(
     mDataProp_5: '5',
     mDataProp_6: '6',
     mDataProp_7: '7',
-    sSearch: busqueda,   // aquí va el documento o número de admisión
+    sSearch: busqueda,
     bRegex: 'false',
     sSearch_0: '',
     bRegex_0: 'false',
@@ -93,7 +122,6 @@ async function llamarApiExterna(
         'authorization': `Bearer ${TOKEN}`,
         'content-type': 'application/x-www-form-urlencoded',
         'cookie': cookieString,
-        // HEADER CRÍTICO: el mismo que usaste en el curl exitoso
         'data': 'RyYCH1Lu3RaWjAwjq79h9YnHmVGtZiiHoILsunKhJgM=.1SS9/UCeyjpq9PyT8MBqPg==.wcFkBNOeMUO3EbN8I4nUXw==',
         'origin': 'https://balance.saludplus.co',
         'priority': 'u=1, i',
@@ -115,26 +143,47 @@ async function llamarApiExterna(
 }
 
 // -------------------------------------------------------------------
-// 3. Controlador principal
+// 5. Función que convierte el array crudo en objeto nombrado
+// -------------------------------------------------------------------
+function formatearAdmision(item: string[]): Admision {
+  const codigoB = item[8] || '';
+  return {
+    idAdmision: item[0] || '',
+    admision:   item[1] || '',
+    documento:  item[2] || '',
+    nombre:     item[3] || '',
+    entidad:    item[4] || '',
+    fecha:      item[5] || '',
+    hora:       item[6] || '',
+    codigoA:    item[7] || '',
+    codigoB:    codigoB,
+    estado:     ESTADOS[codigoB] || (codigoB ? `Desconocido (${codigoB})` : 'Sin estado'),
+  };
+}
+
+// -------------------------------------------------------------------
+// 6. Controlador principal
 // -------------------------------------------------------------------
 export const buscarAdmision = async (req: Request, res: Response) => {
   try {
-    // Leer el parámetro de búsqueda (puede ser documento o admisión)
-    const busqueda = req.body.busqueda || req.query.busqueda || req.body.documento || req.query.documento;
+    const busqueda =
+      req.body.busqueda || req.query.busqueda ||
+      req.body.documento || req.query.documento;
 
     if (!busqueda) {
-      return res.status(400).json({ error: 'El parámetro "busqueda" (documento o admisión) es obligatorio.' });
+      return res.status(400).json({
+        error: 'El parámetro "busqueda" (documento o admisión) es obligatorio.',
+      });
     }
 
     console.log(`🔍 Buscando: "${busqueda}"`);
 
-    // Fechas por defecto: hoy y hoy - 6 meses
     const hoy = new Date();
     let fin = new Date(hoy);
     let ini = new Date(hoy);
     ini.setMonth(ini.getMonth() - 6);
 
-    let todosLosRegistros: any[] = [];
+    let todosLosRegistros: string[][] = [];
     let intentos = 0;
     const MAX_INTENTOS = 20;
 
@@ -147,7 +196,6 @@ export const buscarAdmision = async (req: Request, res: Response) => {
       try {
         const data = await llamarApiExterna(busqueda, iniStr, finStr);
         if (data.aaData && data.aaData.length > 0) {
-          // Acumulamos todos los registros encontrados
           todosLosRegistros = todosLosRegistros.concat(data.aaData);
           console.log(`✅ Encontrados ${data.aaData.length} registros en este rango`);
         } else {
@@ -157,12 +205,10 @@ export const buscarAdmision = async (req: Request, res: Response) => {
         console.warn(`⚠️ Error en consulta para ${iniStr}-${finStr}:`, err);
       }
 
-      // Retroceder 6 meses
       const nuevoFin = new Date(ini);
       const nuevoIni = new Date(ini);
       nuevoIni.setMonth(nuevoIni.getMonth() - 6);
 
-      // Si el nuevo inicio es anterior a la fecha límite, hacemos un último intento hasta la límite
       if (nuevoIni < FECHA_LIMITE) {
         if (nuevoFin >= FECHA_LIMITE) {
           const ultimoIni = new Date(FECHA_LIMITE);
@@ -187,12 +233,14 @@ export const buscarAdmision = async (req: Request, res: Response) => {
     if (todosLosRegistros.length === 0) {
       return res.status(404).json({
         success: false,
-        message: `No se encontraron admisiones para "${busqueda}" en el período disponible (desde 2025-01-01 hasta hoy).`
+        message: `No se encontraron admisiones para "${busqueda}" en el período disponible (desde 2025-01-01 hasta hoy).`,
       });
     }
 
-    // Eliminar duplicados por si el mismo registro aparece en varios rangos
-    const registrosUnicos = Array.from(new Map(todosLosRegistros.map(item => [item[0], item])).values());
+    // Eliminar duplicados por ID interno (item[0]) y formatear como objeto
+    const registrosUnicos: Admision[] = Array.from(
+      new Map(todosLosRegistros.map(item => [item[0], item])).values()
+    ).map(formatearAdmision);
 
     res.json({
       success: true,
