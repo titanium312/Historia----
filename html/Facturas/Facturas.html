@@ -91,7 +91,6 @@
     margin-left:auto;padding-left:12px}
   details.section > .body{padding:14px 16px}
 
-  /* ======== Searchable select ======== */
   .searchsel{position:relative}
   .searchsel-input{
     background:#0b1427;border:1px solid var(--line);color:var(--text);
@@ -418,21 +417,19 @@ function setByPath(obj, path, value){
 }
 
 /* =========================================================
-   CARGAR LISTAS (CON SOPORTE PARA viasIngreso)
+   CARGAR LISTAS
    ========================================================= */
 async function cargarTodo(){
   setStatus('Cargando catálogos…', 'loading');
   try {
     const data = await apiListas('/Todas');
     
-    // Intentar cargar Vías de Ingreso por si no viene en /Todas
     let viasIngreso = [];
     try {
       const viasRes = await apiListas('/viasIngreso');
       const arr = viasRes.success ? viasRes.data : (Array.isArray(viasRes) ? viasRes : []);
       viasIngreso = arr.map(v => ({ id: v.id, text: v.descripcion || v.text || String(v.id) }));
     } catch(e) {
-      console.warn('No se pudo cargar /viasIngreso, se intentará usar data.viasIngreso si existe', e);
       if (data.viasIngreso) {
         viasIngreso = data.viasIngreso.map(v => ({ id: v.id, text: v.descripcion || v.text || String(v.id) }));
       }
@@ -534,7 +531,7 @@ async function cargarLote(){
 function estadoVisual(adm){
   if (adm.estado === 'subiendo')    return { cls:'subiendo', txt:'⏳ Subiendo…' };
   if (adm.estado === 'error-carga') return { cls:'error',    txt:'✖ No cargó' };
-  if (adm.estado === 'error')       return { cls:'error',    txt:'✖ Error subida' };
+  if (adm.estado === 'error')       return { cls:'error',    txt:'✖ Error: ' + truncar(adm.mensaje || 'Desconocido', 30) };
   if (adm.estado === 'ok')          return { cls:'ok',       txt:'✔ Subida OK' };
   const n = calcularVariaciones(adm).length;
   if (n > 0)                        return { cls:'cambios',  txt:`${n} variación(es)` };
@@ -618,7 +615,7 @@ const camposProcedimiento = [
   { key:'IdServicio', type:'lista', lista:'servicios' }, { key:'IdModalidadAtencion', type:'lista', lista:'modalidadesAtencion' },
   { key:'fk_finalidad_procedimiento', type:'lista', lista:'causasExternas' },
   { key:'fk_enfermedad_diagnostico_principal', type:'text' }, { key:'fk_centro_costos', type:'text' },
-  { key:'IdViaIngreso', type:'lista', lista:'viasIngreso' }, // <-- NUEVO CAMPO
+  { key:'IdViaIngreso', type:'lista', lista:'viasIngreso' },
   { key:'fecha_procedimiento', type:'date' }, { key:'hora_procedimiento', type:'time' },
   { key:'autorizacion', type:'text' },
   { key:'cantidad', type:'number' }, { key:'valor_unitario', type:'number' },
@@ -749,6 +746,39 @@ function renderEditor(){
     el.addEventListener('change', onFieldChange);
     if (el.tagName !== 'TEXTAREA' || el.dataset.type !== 'json') el.addEventListener('input', onFieldChange);
   });
+  
+  // Sincronización de Diagnósticos (Input amigable)
+  wrap.querySelectorAll('.dx-sync-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const idx = e.target.dataset.idx;
+      const type = e.target.dataset.type;
+      const admLocal = getActiva();
+      if (!admLocal) return;
+      const c = admLocal.editada.FacturasCompletasPasar.FacturasConsultasF[idx];
+      const val = e.target.value.trim();
+      
+      if (type === 'P') {
+        const codigos = val.split(',').map(s => s.trim()).filter(Boolean);
+        c.consultasDiagnosticosPrincipales = codigos.map(cod => ({ id: cod, text: cod }));
+        c.facturas_consultas_enfermedades_diagnostico_principal = codigos.map(cod => ({ fk_enfermedad: cod }));
+        autoMarcarPaths([
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].consultasDiagnosticosPrincipales`,
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].facturas_consultas_enfermedades_diagnostico_principal`
+        ]);
+      } else {
+        const codigos = val.split(',').map(s => s.trim()).filter(Boolean);
+        c.consultasDiagnosticosRelacionales = codigos.map(cod => ({ id: cod, text: cod }));
+        c.facturas_consultas_enfermedades_diagnostico_relacional = codigos.map(cod => ({ fk_enfermedad: cod }));
+        autoMarcarPaths([
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].consultasDiagnosticosRelacionales`,
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].facturas_consultas_enfermedades_diagnostico_relacional`
+        ]);
+      }
+      updatePreview();
+      renderListaAdmisiones();
+    });
+  });
+
   wrap.querySelectorAll('[data-incluir]').forEach(chk => chk.addEventListener('change', onIncluirChange));
   wrap.querySelectorAll('.chk-sec').forEach(chk => {
     chk.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
@@ -780,20 +810,23 @@ function renderConsulta(c, idx){
   
   const pathP = `${basePath}.consultasDiagnosticosPrincipales`;
   const pathR = `${basePath}.consultasDiagnosticosRelacionales`;
-  const diagP = JSON.stringify(c.consultasDiagnosticosPrincipales || [], null, 2);
-  const diagR = JSON.stringify(c.consultasDiagnosticosRelacionales || [], null, 2);
   const inclP = getIncluir().has(pathP);
   const inclR = getIncluir().has(pathR);
+
+  // Extraer códigos para el input amigable
+  const dxP = (c.consultasDiagnosticosPrincipales || []).map(d => d.id || d.text || d.fk_enfermedad).filter(Boolean).join(', ');
+  const dxR = (c.consultasDiagnosticosRelacionales || []).map(d => d.id || d.text || d.fk_enfermedad).filter(Boolean).join(', ');
 
   return `<div class="grid">
     ${items}
     <div class="field full${inclP ? ' incluido' : ''}">
-      <label class="field-label"><input type="checkbox" data-incluir="${pathP}" ${inclP ? 'checked' : ''} /><span>Diagnósticos principales <small class="muted">(JSON array)</small></span></label>
-      <textarea data-path="${pathP}" data-type="json">${escapeHtml(diagP)}</textarea>
+      <label class="field-label"><input type="checkbox" data-incluir="${pathP}" ${inclP ? 'checked' : ''} /><span>Diagnóstico Principal (CIE-10)</span></label>
+      <input type="text" class="dx-sync-input" data-idx="${idx}" data-type="P" value="${escapeHtml(dxP)}" placeholder="Ej: Z012" />
+      <small class="muted">Escribe el código. Se generará el JSON automáticamente al escribir.</small>
     </div>
     <div class="field full${inclR ? ' incluido' : ''}">
-      <label class="field-label"><input type="checkbox" data-incluir="${pathR}" ${inclR ? 'checked' : ''} /><span>Diagnósticos relacionales <small class="muted">(JSON array)</small></span></label>
-      <textarea data-path="${pathR}" data-type="json">${escapeHtml(diagR)}</textarea>
+      <label class="field-label"><input type="checkbox" data-incluir="${pathR}" ${inclR ? 'checked' : ''} /><span>Diagnósticos Relacionales (CIE-10, separados por coma)</span></label>
+      <input type="text" class="dx-sync-input" data-idx="${idx}" data-type="R" value="${escapeHtml(dxR)}" placeholder="Ej: I10, E11" />
     </div>
   </div>`;
 }
@@ -954,7 +987,20 @@ function onFieldChange(e){
   updatePreview(); renderListaAdmisiones();
 
   if (/FacturasConsultasF\[\d+\]\.(cantidad_consulta|valor_unitario_consulta|cuota_moderadora)$/.test(path)) recalcularConsulta(path);
-  if (/FacturasProcedimientosF\[\d+\]\.(cantidad|valor_unitario|cuota_moderadora)$/.test(path)) recalcularProcedimiento(path);
+    if (/FacturasProcedimientosF\[\d+\]\.(cantidad|valor_unitario|cuota_moderadora)$/.test(path)) recalcularProcedimiento(path);
+
+  const _mC = path.match(/^(FacturasCompletasPasar\.FacturasConsultasF\[\d+\])\./);
+  if (_mC) {
+    const _base = _mC[1];
+    ['consultasDiagnosticosPrincipales','facturas_consultas_enfermedades_diagnostico_principal','consultasDiagnosticosRelacionales','facturas_consultas_enfermedades_diagnostico_relacional'].forEach(_suf => {
+      const _p = _base + '.' + _suf;
+      const _chk = document.querySelector('[data-incluir="' + _p + '"]');
+      if (_chk && !_chk.checked) { _chk.checked = true; adm.incluir.add(_p); const _f = _chk.closest('.field'); if (_f) _f.classList.add('incluido'); }
+    });
+    updatePreview();
+    renderListaAdmisiones();
+    syncCheckboxesSeccion();
+  }
 }
 
 function filtrarFinalidadConsulta(path){
@@ -1148,7 +1194,7 @@ function descargarJSON(){
 }
 
 /* =========================================================
-   SUBIR AL SERVIDOR
+   SUBIR AL SERVIDOR (CON VALIDACIÓN ESTRICTA DE MENSAJE)
    ========================================================= */
 async function subirAdmision(adm){
   const payload = construirPayload(adm);
@@ -1156,6 +1202,18 @@ async function subirAdmision(adm){
   const text = await res.text();
   let body; try { body = JSON.parse(text); } catch { body = text; }
   return { res, body };
+}
+
+function evaluarExito(res, body) {
+  if (!res.ok) return { exito: false, msg: `HTTP ${res.status}` };
+  if (!body || typeof body !== 'object') return { exito: false, msg: 'Respuesta invalida del servidor' };
+  if (body.errores > 0) return { exito: false, msg: body.mensajeRetorno || `Errores: ${body.errores}` };
+
+  const msg = String(body.mensajeRetorno || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!/actualiz(o|o)\s+correctamente/.test(msg)) {
+    return { exito: false, msg: body.mensajeRetorno || 'No se recibio mensaje de exito' };
+  }
+  return { exito: true, msg: body.mensajeRetorno };
 }
 
 async function subirActiva(){
@@ -1170,23 +1228,38 @@ async function subirActiva(){
 
   try {
     const { res, body } = await subirAdmision(adm);
+    const evaluacion = evaluarExito(res, body);
     const pretty = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
-    if (!res.ok){
-      respEl.hidden = false; respEl.innerHTML = `<div class="response err"><b>✖ Error HTTP ${res.status}</b><pre class="json">${escapeHtml(pretty)}</pre></div>`;
-      toast('Error al subir: HTTP ' + res.status, 'err'); setStatus('✖ Error al subir', 'err');
-      adm.estado = 'error'; adm.mensaje = 'HTTP ' + res.status; adm.respuestaSubida = body;
+
+    if (!evaluacion.exito) {
+      respEl.hidden = false; 
+      respEl.innerHTML = `<div class="response err"><b>✖ Error: ${escapeHtml(evaluacion.msg)}</b><pre class="json">${escapeHtml(pretty)}</pre></div>`;
+      toast('Error: ' + evaluacion.msg, 'err'); 
+      setStatus('✖ Error al subir', 'err');
+      adm.estado = 'error'; 
+      adm.mensaje = evaluacion.msg; 
+      adm.respuestaSubida = body;
     } else {
-      respEl.hidden = false; respEl.innerHTML = `<div class="response ok"><b>✔ Subido · ${variaciones.length} variación(es)</b><pre class="json">${escapeHtml(pretty || '(sin respuesta)')}</pre></div>`;
-      toast(`Admisión #${adm.numero} subida`, 'ok'); setStatus('✔ Subida exitosa', 'ok');
+      respEl.hidden = false; 
+      respEl.innerHTML = `<div class="response ok"><b>✔ Subido exitosamente</b><pre class="json">${escapeHtml(pretty || '(sin respuesta)')}</pre></div>`;
+      toast(`Admisión #${adm.numero} actualizada correctamente`, 'ok'); 
+      setStatus('✔ Subida exitosa', 'ok');
       adm.original = normalizeDates(JSON.parse(JSON.stringify(construirPayload(adm))));
-      adm.incluir.clear(); adm.estado = 'ok'; adm.mensaje = null; adm.respuestaSubida = body;
-      renderEditor(); updatePreview();
+      adm.incluir.clear(); 
+      adm.estado = 'ok'; 
+      adm.mensaje = null; 
+      adm.respuestaSubida = body;
+      renderEditor(); 
+      updatePreview();
     }
     renderListaAdmisiones();
   } catch(e){
-    respEl.hidden = false; respEl.innerHTML = `<div class="response err"><b>✖ Error de red</b><pre class="json">${escapeHtml(e.message)}</pre></div>`;
-    toast('Error al subir: ' + e.message, 'err'); setStatus('✖ Error de red', 'err');
-    adm.estado = 'error'; adm.mensaje = e.message;
+    respEl.hidden = false; 
+    respEl.innerHTML = `<div class="response err"><b>✖ Error de red</b><pre class="json">${escapeHtml(e.message)}</pre></div>`;
+    toast('Error al subir: ' + e.message, 'err'); 
+    setStatus('✖ Error de red', 'err');
+    adm.estado = 'error'; 
+    adm.mensaje = e.message;
   } finally {
     btn.disabled = false; btn.innerHTML = originalHTML;
     respEl.scrollIntoView({ behavior:'smooth', block:'center' });
@@ -1208,17 +1281,28 @@ async function subirTodas(){
     adm.estado = 'subiendo'; renderListaAdmisiones();
     try {
       const { res, body } = await subirAdmision(adm);
-      if (res.ok){
+      const evaluacion = evaluarExito(res, body);
+      
+      if (evaluacion.exito){
         adm.original = normalizeDates(JSON.parse(JSON.stringify(construirPayload(adm))));
-        adm.incluir.clear(); adm.estado = 'ok'; adm.mensaje = null; adm.respuestaSubida = body; ok++;
+        adm.incluir.clear(); 
+        adm.estado = 'ok'; 
+        adm.mensaje = null; 
+        adm.respuestaSubida = body; 
+        ok++;
         resultados.push({ numero: adm.numero, ok: true, status: res.status, body });
       } else {
-        adm.estado = 'error'; adm.mensaje = 'HTTP ' + res.status; adm.respuestaSubida = body; err++;
-        resultados.push({ numero: adm.numero, ok: false, status: res.status, body });
+        adm.estado = 'error'; 
+        adm.mensaje = evaluacion.msg; 
+        adm.respuestaSubida = body; 
+        err++;
+        resultados.push({ numero: adm.numero, ok: false, status: res.status, body, msg: evaluacion.msg });
       }
     } catch(e){
-      adm.estado = 'error'; adm.mensaje = e.message; err++;
-      resultados.push({ numero: adm.numero, ok: false, status: 0, body: e.message });
+      adm.estado = 'error'; 
+      adm.mensaje = e.message; 
+      err++;
+      resultados.push({ numero: adm.numero, ok: false, status: 0, body: e.message, msg: e.message });
     }
     renderListaAdmisiones();
   }
@@ -1228,13 +1312,13 @@ async function subirTodas(){
     <td>#${escapeHtml(r.numero)}</td>
     <td>${r.ok ? '<span style="color:var(--ok)">✔ OK</span>' : '<span style="color:var(--err)">✖ Error</span>'}</td>
     <td>${escapeHtml(String(r.status))}</td>
-    <td><code>${escapeHtml(truncar(typeof r.body === 'string' ? r.body : JSON.stringify(r.body), 140))}</code></td>
+    <td><code>${escapeHtml(truncar(r.msg || (typeof r.body === 'string' ? r.body : JSON.stringify(r.body)), 140))}</code></td>
   </tr>`).join('');
 
   respEl.hidden = false;
   respEl.innerHTML = `<div class="response ${err === 0 ? 'ok' : 'err'}">
     <b>${err === 0 ? '✔' : '⚠'} Resultado: ${ok} ok, ${err} error(es)</b>
-    <table style="margin-top:8px"><thead><tr><th>Admisión</th><th>Estado</th><th>HTTP</th><th>Respuesta</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+    <table style="margin-top:8px"><thead><tr><th>Admisión</th><th>Estado</th><th>HTTP</th><th>Detalle</th></tr></thead><tbody>${rowsHtml}</tbody></table>
   </div>`;
   setStatus(err === 0 ? `✔ Lote subido (${ok})` : `⚠ Lote con errores (${ok} ok, ${err} err)`, err === 0 ? 'ok' : 'err');
   toast(`Lote: ${ok} ok, ${err} error(es)`, err === 0 ? 'ok' : 'err');
@@ -1271,7 +1355,7 @@ function renderCatalogos(){
     ['Tipos de diagnóstico', d.tiposDiagnostico, x => `${x.id} · ${x.text}`],
     ['Usuarios', d.usuarios, x => `${x.id} · ${x.text}`],
     ['Consultorios', d.consultorios, x => `${x.id} · ${x.text}`],
-    ['Vías de ingreso', d.viasIngreso, x => `${x.id} · ${x.text}`], // <-- AÑADIDO
+    ['Vías de ingreso', d.viasIngreso, x => `${x.id} · ${x.text}`],
   ];
   $('#catalogosWrap').innerHTML = grupos.map(([titulo, arr, fmt]) => {
     const list = Array.isArray(arr) ? arr : [];
