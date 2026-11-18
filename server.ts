@@ -37,6 +37,17 @@ app.get('/Tupapa', (req, res) => {
   });
 });
 
+
+app.get('/Factura', (req, res) => {
+  const htmlPath = path.join(__dirname, 'html/Facturas', 'Facturas.html');
+  res.sendFile(htmlPath, (err) => {
+    if (err) {
+      console.error('Error al enviar subir.html:', err);
+      res.status(404).send('Archivo subir.html no encontrado');
+    }
+  });
+});
+
 // Rutas de la API
 app.use('/', router);
 
