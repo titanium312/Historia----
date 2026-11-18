@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Facturación · Editar y subir admisiones (lote)</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#111c33; --panel-2:#16233f; --line:#243352;
+    --text:#e6edf7; --muted:#8fa3c4; --primary:#3b82f6; --primary-2:#2563eb;
+    --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;}
+  a{color:var(--primary)}
+  header{background:linear-gradient(180deg,#111c33,#0f172a);
+    border-bottom:1px solid var(--line);padding:14px 22px;position:sticky;top:0;z-index:20}
+  header h1{margin:0;font-size:18px;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  header .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+  header .bar label{color:var(--muted);font-size:12px}
+  header .bar input{background:#0b1427;border:1px solid var(--line);color:var(--text);
+    padding:6px 10px;border-radius:8px;min-width:340px;font-family:ui-monospace,monospace}
+  .status{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .status.ok{color:var(--ok);border-color:#164e2f;background:#0b1f15}
+  .status.err{color:var(--err);border-color:#5b1b1b;background:#200b0b}
+  .status.loading{color:var(--warn);border-color:#5a3d0d;background:#231803}
+  .tabs{display:flex;gap:6px;padding:12px 22px 0}
+  .tabs button{background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:8px 14px;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600;font-size:13px}
+  .tabs button.active{background:var(--panel);color:var(--text);border-bottom-color:var(--panel)}
+  main{padding:18px 22px 60px;max-width:1400px;margin:0 auto}
+  section.tab{display:none;animation:fade .18s ease}
+  section.tab.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .card h2{margin:0 0 14px;font-size:15px;letter-spacing:.4px;color:#c9d7ee}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field-label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
+    cursor:pointer;user-select:none}
+  .field-label input[type="checkbox"]{accent-color:var(--primary);
+    width:14px;height:14px;flex:0 0 auto;cursor:pointer}
+  .field label .req{color:var(--err)}
+  .field input,.field select,.field textarea{
+    background:#0b1427;border:1px solid var(--line);color:var(--text);
+    padding:8px 10px;border-radius:8px;font-size:13px;width:100%;outline:none;
+    transition:border-color .12s,box-shadow .12s;font-family:inherit;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{
+    border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.18)
+  }
+  .field input[readonly]{background:#0e1930;color:#8fa3c4;cursor:not-allowed}
+  .field textarea{min-height:80px;resize:vertical;font-family:ui-monospace,monospace;font-size:12px}
+  .field.incluido > input,.field.incluido > textarea{
+    border-color:var(--primary);box-shadow:0 0 0 1px var(--primary) inset;
+  }
+  .field.incluido .searchsel-input{
+    border-color:var(--primary);box-shadow:0 0 0 1px var(--primary) inset;
+  }
+  .field.incluido .field-label span{color:#93c5fd;font-weight:600}
+  .full{grid-column:1/-1}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  button.btn{background:var(--primary);color:#fff;border:0;padding:10px 16px;
+    border-radius:9px;cursor:pointer;font-weight:700;font-size:13px}
+  button.btn:hover{background:var(--primary-2)}
+  button.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+  button.btn.ghost:hover{background:var(--panel-2)}
+  button.btn:disabled{opacity:.5;cursor:not-allowed}
+  button.btn.upload{background:#16a34a}
+  button.btn.upload:hover{background:#15803d}
+  button.btn.small{padding:6px 10px;font-size:12px}
+  pre.json{background:#080f1f;border:1px solid var(--line);border-radius:10px;
+    padding:14px;max-height:520px;overflow:auto;font-size:12px;color:#a7c4f7;
+    font-family:ui-monospace,Consolas,monospace;white-space:pre;margin:0}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;
+    background:#0b1427;border:1px solid var(--line);color:#c9d7ee;margin:2px 4px 2px 0}
+  details.section{background:var(--panel-2);border:1px solid var(--line);
+    border-radius:12px;padding:0;margin-bottom:12px}
+  details.section > summary{cursor:pointer;padding:12px 16px;font-weight:700;
+    background:var(--panel);border-bottom:1px solid var(--line);list-style:none;
+    display:flex;align-items:center;gap:8px;border-radius:12px 12px 0 0}
+  details.section > summary::-webkit-details-marker{display:none}
+  details.section > summary::before{content:"▸";color:var(--primary);transition:transform .15s}
+  details.section[open] > summary::before{transform:rotate(90deg)}
+  details.section > summary .chk-sec{accent-color:var(--primary);
+    width:16px;height:16px;flex:0 0 auto;cursor:pointer;margin-left:4px}
+  details.section > summary .subtitle{color:var(--muted);font-weight:400;font-size:12px;
+    margin-left:auto;padding-left:12px}
+  details.section > .body{padding:14px 16px}
+
+  .searchsel{position:relative}
+  .searchsel-input{
+    background:#0b1427;border:1px solid var(--line);color:var(--text);
+    padding:8px 10px;border-radius:8px;font-size:13px;width:100%;outline:none;
+    transition:border-color .12s,box-shadow .12s;font-family:inherit;
+  }
+  .searchsel-input::placeholder{color:#5a6d8c;font-style:italic}
+  .searchsel-input:focus{
+    border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.18)
+  }
+  .searchsel-dropdown{
+    position:absolute;top:calc(100% + 2px);left:0;right:0;
+    max-height:280px;overflow-y:auto;background:#0b1427;
+    border:1px solid var(--primary);border-radius:8px;
+    box-shadow:0 10px 30px rgba(0,0,0,.6);z-index:100;
+  }
+  .searchsel-option{
+    padding:7px 10px;cursor:pointer;font-size:13px;color:var(--text);
+    border-bottom:1px solid #16233f;
+  }
+  .searchsel-option:last-child{border-bottom:0}
+  .searchsel-option:hover,.searchsel-option.hl{background:var(--panel-2)}
+  .searchsel-option.selected{color:#86efac;font-weight:600}
+  .searchsel-option.none{color:var(--muted);font-style:italic;cursor:default}
+
+  .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 16px}
+  .kv div{font-size:12px;color:var(--muted)}
+  .kv b{display:block;color:var(--text);font-weight:600;font-size:13px;margin-top:2px}
+  .catalogo-card{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .catalogo-card h4{margin:0 0 8px;font-size:13px;color:#c9d7ee}
+  .catalogo-card h4 span{color:var(--muted);font-weight:400;font-size:11px}
+  .catalogo-card .list{max-height:220px;overflow:auto;font-size:12px;
+    font-family:ui-monospace,monospace;color:#a7c4f7;white-space:pre-wrap;line-height:1.5}
+  .toast{position:fixed;bottom:20px;right:20px;padding:12px 16px;border-radius:10px;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transform:translateY(10px);
+    transition:all .25s;z-index:200;max-width:420px;font-size:13px}
+  .toast.show{opacity:1;transform:none}
+  .toast.ok{border-color:#164e2f}
+  .toast.err{border-color:#5b1b1b}
+  .muted{color:var(--muted);font-size:12px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;
+    background:#0b1f15;border:1px solid #164e2f;color:#86efac;margin-left:8px}
+  .badge-changes{background:#231803;border-color:#5a3d0d;color:#fcd34d}
+  .response{margin-top:14px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:#0b1427}
+  .response.ok{border-color:#164e2f;background:#0b1f15}
+  .response.err{border-color:#5b1b1b;background:#200b0b}
+  .response b{display:block;margin-bottom:8px;font-size:13px}
+  .response pre.json{background:#080f1f;color:#a7c4f7;max-height:260px}
+  .badge-sec{background:#0b1f15;border-color:#164e2f;color:#86efac;margin-left:8px;font-size:10px;padding:1px 6px}
+  #variacionesWrap table{width:100%;border-collapse:collapse;font-size:12px}
+  #variacionesWrap th,#variacionesWrap td{padding:6px 10px;border-bottom:1px solid var(--line);
+    text-align:left;vertical-align:top}
+  #variacionesWrap th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  #variacionesWrap code{color:#fcd34d;font-family:ui-monospace,monospace;font-size:11px}
+  #variacionesWrap .val-new{color:#86efac;font-weight:600}
+  #variacionesWrap .val-old{color:#fca5a5;text-decoration:line-through;opacity:.8}
+
+  .adm-list{display:flex;flex-direction:column;gap:4px;max-height:340px;overflow:auto;
+    border:1px solid var(--line);border-radius:8px;padding:4px;background:#0b1427}
+  .adm-item{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:8px 12px;border-radius:6px;cursor:pointer;transition:background .1s;
+    border:1px solid transparent}
+  .adm-item:hover{background:var(--panel)}
+  .adm-item.active{background:var(--panel);border-color:var(--primary)}
+  .adm-num{font-family:ui-monospace,monospace;font-size:13px;font-weight:600}
+  .adm-var{font-size:11px;color:var(--muted);margin-left:8px;font-weight:400}
+  .adm-badge{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .adm-badge.pendiente{background:#1e293b;color:#94a3b8;border:1px solid #334155}
+  .adm-badge.cambios{background:#231803;color:#fcd34d;border:1px solid #5a3d0d}
+  .adm-badge.ok{background:#0b1f15;color:#86efac;border:1px solid #164e2f}
+  .adm-badge.error{background:#200b0b;color:#fca5a5;border:1px solid #5b1b1b}
+  .adm-badge.subiendo{background:#0b1427;color:#93c5fd;border:1px solid #1e40af}
+  .batch-progress{
+    margin-top:10px;font-size:12px;color:var(--muted);
+    padding:8px 10px;border-radius:8px;background:#0b1427;border:1px solid var(--line);
+    font-family:ui-monospace,monospace;display:none}
+  .batch-progress.show{display:block}
+  .batch-progress b{color:var(--text)}
+  .lote-textarea{min-height:110px;font-family:ui-monospace,monospace;font-size:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Facturación · Editar y subir admisiones (lote)</h1>
+  <div class="sub">
+    Carga masiva con <code>POST /facturacion/armarJson</code> · sube con <code>POST /facturacion/Subir</code>
+  </div>
+  <div class="bar">
+    <label for="baseUrl">Base Listas:</label>
+    <input id="baseUrl" type="text" spellcheck="false" />
+    <button class="btn ghost" id="btnReload" type="button">↻ Recargar catálogos</button>
+    <span id="status" class="status">Inicializando…</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="editar" class="active">✏️ Editar / Subir</button>
+  <button data-tab="catalogos">📚 Catálogos</button>
+  <button data-tab="consultas">📋 Consultas existentes</button>
+</nav>
+
+<main>
+  <section id="tab-editar" class="tab active">
+    <div class="card">
+      <h2>1) Cargar admisiones</h2>
+      <div class="field">
+        <label for="numerosAdmision">
+          Números de admisión <small class="muted">(uno por línea, o separados por coma / punto y coma)</small>
+        </label>
+        <textarea id="numerosAdmision" class="lote-textarea" placeholder="838859&#10;838860&#10;838861"></textarea>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="btnCargarLote" type="button">📥 Cargar lote</button>
+        <button class="btn ghost" id="btnDescartarTodo" type="button">🗑️ Descartar todo</button>
+      </div>
+      <div id="loteProgress" class="batch-progress"></div>
+      <p class="muted" style="margin-top:10px">
+        Solo los campos con ☑ marcado se enviarán al servidor; los no marcados conservan el valor original.
+      </p>
+    </div>
+
+    <div class="card" style="margin-top:16px" id="listaCard" hidden>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <h2 style="margin:0">
+          Admisiones cargadas <span class="badge" id="badgeTotalAdmisiones">0</span>
+        </h2>
+        <div class="row">
+          <button class="btn ghost small" id="btnMarcarCambiadosTodas" type="button" title="Marca automáticamente los cambios en TODAS las admisiones">⚡⚡ Marcar cambios en TODAS</button>
+          <button class="btn ghost small" id="btnDesmarcarTodas" type="button">☐ Desmarcar todas</button>
+          <button class="btn upload" id="btnSubirTodas" type="button">🚀 Subir todas las pendientes</button>
+        </div>
+      </div>
+      <div id="listaAdmisiones" class="adm-list"></div>
+      <div id="subirTodasResp" hidden></div>
+    </div>
+
+    <div id="workspaceWrap" hidden style="margin-top:16px">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <h2 style="margin:0">Editando admisión <span class="badge" id="admActivaBadge">—</span></h2>
+          <div class="row">
+            <button class="btn ghost small" id="btnDescartarCambios" type="button">↺ Descartar cambios</button>
+            <button class="btn ghost small" id="btnMarcarCambiados" type="button">⚡ Marcar solo cambios</button>
+            <button class="btn ghost small" id="btnMarcarTodo" type="button">☑ Marcar todo</button>
+            <button class="btn ghost small" id="btnDesmarcarTodo" type="button">☐ Desmarcar todo</button>
+          </div>
+        </div>
+        <div id="editorWrap"><p class="muted">Selecciona una admisión de la lista.</p></div>
+      </div>
+
+      <div class="card" style="margin-top:16px" id="variacionesCard" hidden>
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <h2 style="margin:0">Variaciones a enviar <span class="badge badge-changes" id="badgeVariaciones">0</span></h2>
+        </div>
+        <div id="variacionesWrap"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px" id="previewCard" hidden>
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <h2 style="margin:0">JSON a subir <span class="badge" id="badgeCambios">0 variaciones</span></h2>
+          <div class="row">
+            <button class="btn ghost" id="btnCopiar" type="button">📋 Copiar</button>
+            <button class="btn ghost" id="btnDescargar" type="button">💾 Descargar .json</button>
+            <button class="btn upload" id="btnSubir" type="button">🚀 Subir esta</button>
+          </div>
+        </div>
+        <pre class="json" id="previewAdmision">{ }</pre>
+        <div id="subirResp" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-catalogos" class="tab">
+    <div class="card">
+      <h2>Catálogos cargados</h2>
+      <div id="catalogosWrap" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">
+        <p class="muted">Cargando…</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-consultas" class="tab">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <h2 style="margin:0">Consultas existentes</h2>
+        <button class="btn ghost" id="btnLoadConsultas" type="button">↻ Cargar /Listas/Consultas</button>
+      </div>
+      <div id="consultasWrap"><p class="muted">Pulsa “Cargar” para consultar el endpoint.</p></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   CONFIG & STATE
+   ========================================================= */
+const DEFAULT_BASE = '/facturacion/Listas';
+(function migrarBase(){
+  const guardada = localStorage.getItem('facturacion_base');
+  if (guardada && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(guardada)){
+    localStorage.removeItem('facturacion_base');
+  }
+})();
+let BASE = localStorage.getItem('facturacion_base') || DEFAULT_BASE;
+
+const $ = (s, c=document) => c.querySelector(s);
+const $$ = (s, c=document) => Array.from(c.querySelectorAll(s));
+
+const state = {
+  data: null,
+  finalidadesAll: [],
+  loaded: false,
+  admisiones: [],
+  activa: -1,
+};
+const searchSelItemsMap = new Map();
+let secCounter = 0;
+
+function getActiva(){ return (state.activa >= 0 && state.activa < state.admisiones.length) ? state.admisiones[state.activa] : null; }
+function getOriginal(){ const a = getActiva(); return a ? a.original : null; }
+function getEditada(){  const a = getActiva(); return a ? a.editada : null; }
+function getIncluir(){  const a = getActiva(); return a ? a.incluir : new Set(); }
+
+/* =========================================================
+   UTILS & DATE NORMALIZATION
+   ========================================================= */
+function toast(msg, type='') {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = 'toast ' + type; }, 3800);
+}
+function setStatus(msg, cls='') {
+  const el = $('#status');
+  el.textContent = msg;
+  el.className = 'status ' + cls;
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function num(v, d=0){ const n = Number(v); return Number.isFinite(n) ? n : d; }
+function money(n){ return new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n); }
+function truncar(s, n){ s = String(s); return s.length > n ? s.slice(0, n) + '…' : s; }
+function sortByText(arr){
+  if (!Array.isArray(arr)) return [];
+  return arr.slice().sort((a,b) => String(a?.text ?? '').localeCompare(String(b?.text ?? ''), 'es', { numeric:true, sensitivity:'base' }));
+}
+
+function normalizeDates(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  for (let key in obj) {
+    if (typeof obj[key] === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(obj[key])) {
+      const [d, m, y] = obj[key].split('/');
+      obj[key] = `${y}-${m}-${d}`;
+    } else if (typeof obj[key] === 'object') {
+      normalizeDates(obj[key]);
+    }
+  }
+  return obj;
+}
+
+function denormalizeDates(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  for (let key in obj) {
+    if (typeof obj[key] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(obj[key])) {
+      const [y, m, d] = obj[key].split('-');
+      obj[key] = `${d}/${m}/${y}`;
+    } else if (typeof obj[key] === 'object') {
+      denormalizeDates(obj[key]);
+    }
+  }
+  return obj;
+}
+
+async function apiListas(path){
+  const res = await fetch(BASE + path, { headers:{'Accept':'application/json'} });
+  if (!res.ok) throw new Error(`HTTP ${res.status} en ${path}`);
+  return res.json();
+}
+function baseFacturacion(){ return BASE.replace(/\/+$/, '').replace(/\/Listas$/i, ''); }
+function armarJsonUrl(){ return baseFacturacion() + '/armarJson'; }
+function subirUrl(){ return baseFacturacion() + '/Subir'; }
+
+function getByPath(obj, path){
+  const parts = path.split('.');
+  let cur = obj;
+  for (const k of parts){
+    if (cur == null) return undefined;
+    const m = k.match(/^([A-Za-z0-9_]+)(?:\[(\d+)\])?$/);
+    if (!m) { cur = cur[k]; continue; }
+    const [, name, idx] = m;
+    cur = idx !== undefined ? cur[name]?.[Number(idx)] : cur[name];
+  }
+  return cur;
+}
+function setByPath(obj, path, value){
+  const parts = path.split('.');
+  let cur = obj;
+  for (let i=0;i<parts.length-1;i++){
+    const m = parts[i].match(/^([A-Za-z0-9_]+)(?:\[(\d+)\])?$/);
+    if (!m){ cur = cur[parts[i]] = cur[parts[i]] || {}; continue; }
+    const [, name, idx] = m;
+    if (idx !== undefined){
+      cur[name] = cur[name] || [];
+      cur[name][Number(idx)] = cur[name][Number(idx)] || {};
+      cur = cur[name][Number(idx)];
+    } else {
+      cur[name] = cur[name] || {};
+      cur = cur[name];
+    }
+  }
+  const last = parts[parts.length-1];
+  const m = last.match(/^([A-Za-z0-9_]+)(?:\[(\d+)\])?$/);
+  if (m){
+    const [, name, idx] = m;
+    if (idx !== undefined){ cur[name] = cur[name] || []; cur[name][Number(idx)] = value; } 
+    else cur[name] = value;
+  } else cur[last] = value;
+}
+
+/* =========================================================
+   CARGAR LISTAS
+   ========================================================= */
+async function cargarTodo(){
+  setStatus('Cargando catálogos…', 'loading');
+  try {
+    const data = await apiListas('/Todas');
+    
+    let viasIngreso = [];
+    try {
+      const viasRes = await apiListas('/viasIngreso');
+      const arr = viasRes.success ? viasRes.data : (Array.isArray(viasRes) ? viasRes : []);
+      viasIngreso = arr.map(v => ({ id: v.id, text: v.descripcion || v.text || String(v.id) }));
+    } catch(e) {
+      if (data.viasIngreso) {
+        viasIngreso = data.viasIngreso.map(v => ({ id: v.id, text: v.descripcion || v.text || String(v.id) }));
+      }
+    }
+
+    state.data = {
+      actividades: sortByText(data.actividades || []),
+      finalidades: sortByText(data.finalidades || []),
+      centrosServicios: sortByText(data.centrosServicios || []),
+      servicios: sortByText(data.servicios || []),
+      modalidadesAtencion: sortByText(data.modalidadesAtencion || []),
+      causasExternas: sortByText(data.causasExternas || []),
+      tiposDiagnostico: sortByText(data.tiposDiagnostico || []),
+      usuarios: sortByText(data.usuarios || []),
+      consultorios: sortByText(data.consultorios || []),
+      viasIngreso: sortByText(viasIngreso),
+    };
+    state.finalidadesAll = state.data.finalidades;
+    state.loaded = true;
+    renderCatalogos();
+    setStatus(`✔ Catálogos cargados (${state.finalidadesAll.length} finalidades, ${state.data.viasIngreso.length} vías)`, 'ok');
+    toast('Catálogos cargados', 'ok');
+  } catch(e){
+    console.error(e);
+    setStatus('✖ Error al cargar catálogos', 'err');
+    toast('No se pudo cargar /Listas/Todas: ' + e.message, 'err');
+  }
+}
+
+/* =========================================================
+   CARGAR LOTE DE ADMISIONES
+   ========================================================= */
+function parseNumeros(raw){ return raw.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean); }
+
+async function cargarLote(){
+  const numerosRaw = parseNumeros($('#numerosAdmision').value);
+  if (!numerosRaw.length){ toast('Ingresa al menos un número de admisión', 'err'); return; }
+
+  const yaCargados = new Set(state.admisiones.map(a => a.numero));
+  const nuevos = numerosRaw.filter(n => !yaCargados.has(n));
+  if (!nuevos.length){ toast('Todos esos números ya están cargados', ''); return; }
+
+  const prog = $('#loteProgress');
+  prog.classList.add('show');
+  prog.innerHTML = `<b>0/${nuevos.length}</b> cargando…`;
+  setStatus('Cargando lote…', 'loading');
+
+  const btn = $('#btnCargarLote');
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '⏳ Cargando…';
+
+  let ok = 0, err = 0;
+  for (let i = 0; i < nuevos.length; i++){
+    const numero = nuevos[i];
+    prog.innerHTML = `<b>${i+1}/${nuevos.length}</b> cargando <code>${escapeHtml(numero)}</code>…`;
+    try {
+      const res = await fetch(armarJsonUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ numeroAdmision: numero })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      
+      const normalizedData = normalizeDates(JSON.parse(JSON.stringify(data)));
+      
+      state.admisiones.push({
+        numero,
+        original: JSON.parse(JSON.stringify(normalizedData)),
+        editada:  JSON.parse(JSON.stringify(normalizedData)),
+        incluir:  new Set(),
+        estado:   'pendiente',
+        mensaje:  null,
+        respuestaSubida: null,
+      });
+      ok++;
+    } catch(e){
+      state.admisiones.push({ numero, original: null, editada: null, incluir: new Set(), estado: 'error-carga', mensaje: e.message, respuestaSubida: null });
+      err++;
+    }
+    renderListaAdmisiones();
+  }
+
+  btn.disabled = false; btn.innerHTML = originalHTML;
+  prog.innerHTML = `Listo: <b>${ok}</b> ok${err ? ', <b>' + err + '</b> con error' : ''}.`;
+  setStatus(`✔ Lote cargado (${ok} ok${err ? ', ' + err + ' error' : ''})`, ok ? 'ok' : 'err');
+  toast(`Lote cargado: ${ok} ok${err ? ', ' + err + ' error(es)' : ''}`, ok ? 'ok' : 'err');
+
+  if (!getActiva() || !getActiva().original){
+    const idx = state.admisiones.findIndex(a => a.original);
+    if (idx >= 0) seleccionarAdmision(idx);
+  }
+  $('#numerosAdmision').value = '';
+}
+
+/* =========================================================
+   LISTA DE ADMISIONES
+   ========================================================= */
+function estadoVisual(adm){
+  if (adm.estado === 'subiendo')    return { cls:'subiendo', txt:'⏳ Subiendo…' };
+  if (adm.estado === 'error-carga') return { cls:'error',    txt:'✖ No cargó' };
+  if (adm.estado === 'error')       return { cls:'error',    txt:'✖ Error: ' + truncar(adm.mensaje || 'Desconocido', 30) };
+  if (adm.estado === 'ok')          return { cls:'ok',       txt:'✔ Subida OK' };
+  const n = calcularVariaciones(adm).length;
+  if (n > 0)                        return { cls:'cambios',  txt:`${n} variación(es)` };
+  return { cls:'pendiente', txt:'Sin cambios' };
+}
+
+function renderListaAdmisiones(){
+  const lista = $('#listaAdmisiones');
+  const card  = $('#listaCard');
+  const badge = $('#badgeTotalAdmisiones');
+  if (!state.admisiones.length){ card.hidden = true; $('#workspaceWrap').hidden = true; return; }
+  
+  card.hidden = false;
+  badge.textContent = state.admisiones.length;
+  lista.innerHTML = state.admisiones.map((adm, i) => {
+    const ev = estadoVisual(adm);
+    return `<div class="adm-item ${i === state.activa ? 'active' : ''}" data-idx="${i}">
+      <span><span class="adm-num">#${escapeHtml(adm.numero)}</span>${adm.mensaje ? `<span class="adm-var" title="${escapeHtml(adm.mensaje)}">· ${escapeHtml(truncar(adm.mensaje, 40))}</span>` : ''}</span>
+      <span class="adm-badge ${ev.cls}">${escapeHtml(ev.txt)}</span>
+    </div>`;
+  }).join('');
+  lista.querySelectorAll('.adm-item').forEach(el => {
+    el.addEventListener('click', () => seleccionarAdmision(parseInt(el.dataset.idx, 10)));
+  });
+}
+
+function seleccionarAdmision(idx){
+  if (idx < 0 || idx >= state.admisiones.length) return;
+  const adm = state.admisiones[idx];
+  if (!adm.original){ toast('Esa admisión no se cargó correctamente', 'err'); return; }
+  state.activa = idx;
+  renderListaAdmisiones();
+  renderEditor();
+  updatePreview();
+  $('#admActivaBadge').textContent = '#' + adm.numero;
+  $('#subirResp').hidden = true; $('#subirResp').innerHTML = '';
+}
+
+/* =========================================================
+   DEFINICIÓN DE CAMPOS EDITABLES
+   ========================================================= */
+const camposAdmision = [
+  { key:'metodo_pago', type:'text' }, { key:'fk_entidad', type:'text' },
+  { key:'fk_paciente', type:'text' }, { key:'fk_usuario', type:'lista', lista:'usuarios' },
+  { key:'fk_contrato_entidad', type:'text' }, { key:'fecha_admision', type:'date' },
+  { key:'hora_admision', type:'time' }, { key:'observaciones', type:'textarea', full:true }
+];
+const camposPacientes = [
+  { key:'direccion_paciente', type:'text' }, { key:'fk_ocupacion', type:'text' },
+  { key:'fk_nivel_educativo', type:'text' }, { key:'fk_grupo_etnico', type:'text' },
+  { key:'fk_discapacidad', type:'text' }, { key:'EnfoqueDiferencialIdGenero', type:'text' },
+  { key:'IdOrientacionSexualEnfoqueDiferencial', type:'text' }, { key:'fk_tipo_paciente', type:'text' },
+];
+const camposFactura = [
+  { key:'fk_entidad', type:'text' }, { key:'fk_contrato_entidad', type:'text' },
+  { key:'fk_usuario', type:'lista', lista:'usuarios' }, { key:'fecha_emision', type:'date' },
+  { key:'hora_emision', type:'time' }, { key:'autorizacion', type:'text' },
+  { key:'cuota_moderadora', type:'number' }, { key:'valor_copago', type:'number' },
+  { key:'valor_descuento', type:'number' },
+];
+const camposConsulta = [
+  { key:'IdActividad', type:'lista', lista:'actividades' },
+  { key:'fk_finalida_consulta', type:'finalidad' },
+  { key:'fk_causa_externa', type:'lista', lista:'causasExternas' },
+  { key:'tipo_diagnostico', type:'lista', lista:'tiposDiagnostico' },
+  { key:'fk_procedimiento', type:'lista', lista:'servicios' },
+  { key:'fk_centro_servicios', type:'lista', lista:'centrosServicios' },
+  { key:'fk_usuario', type:'lista', lista:'usuarios' },
+  { key:'IdServicio', type:'lista', lista:'servicios' },
+  { key:'IdModalidadAtencion', type:'lista', lista:'modalidadesAtencion' },
+  { key:'fecha_atencion', type:'date' }, { key:'hora_atencion', type:'time' },
+  { key:'autorizacion', type:'text' },
+  { key:'cantidad_consulta', type:'number' }, { key:'valor_unitario_consulta', type:'number' },
+  { key:'cuota_moderadora', type:'number' },
+  { key:'valor_consulta', type:'number', readonly:true }, { key:'neto_pagar', type:'number', readonly:true },
+  { key:'nombre_procedimiento', type:'text', full:true },
+];
+const camposProcedimiento = [
+  { key:'fk_procedimiento', type:'lista', lista:'servicios' }, { key:'fk_procedimiento_soat', type:'text' },
+  { key:'fk_centro_servicios', type:'lista', lista:'centrosServicios' }, { key:'fk_usuario', type:'lista', lista:'usuarios' },
+  { key:'IdServicio', type:'lista', lista:'servicios' }, { key:'IdModalidadAtencion', type:'lista', lista:'modalidadesAtencion' },
+  { key:'fk_finalidad_procedimiento', type:'lista', lista:'causasExternas' },
+  { key:'fk_enfermedad_diagnostico_principal', type:'text' }, { key:'fk_centro_costos', type:'text' },
+  { key:'IdViaIngreso', type:'lista', lista:'viasIngreso' },
+  { key:'fecha_procedimiento', type:'date' }, { key:'hora_procedimiento', type:'time' },
+  { key:'autorizacion', type:'text' },
+  { key:'cantidad', type:'number' }, { key:'valor_unitario', type:'number' },
+  { key:'cuota_moderadora', type:'number' }, { key:'valor_total', type:'number', readonly:true },
+];
+
+/* =========================================================
+   SEARCHABLE SELECT COMPONENT
+   ========================================================= */
+function initSearchSelect(el, items){
+  el._items = items || [];
+  const input = el.querySelector('.searchsel-input');
+  const dd = el.querySelector('.searchsel-dropdown');
+  let hlIdx = -1;
+
+  function renderOpts(filter=''){
+    const f = String(filter || '').toLowerCase().trim();
+    const curItems = el._items || [];
+    const opts = f ? curItems.filter(it => String(it.text).toLowerCase().includes(f) || String(it.id).toLowerCase().includes(f)) : curItems;
+    dd.innerHTML = ''; hlIdx = -1;
+    if (!f){
+      const none = document.createElement('div');
+      none.className = 'searchsel-option none'; none.dataset.value = ''; none.textContent = '— Sin selección —';
+      dd.appendChild(none);
+    }
+    if (!opts.length && f){
+      const e = document.createElement('div'); e.className = 'searchsel-option none'; e.textContent = 'Sin coincidencias'; dd.appendChild(e); return;
+    }
+    opts.forEach(it => {
+      const o = document.createElement('div'); o.className = 'searchsel-option';
+      if (String(it.id) === String(el.dataset.value)) o.classList.add('selected');
+      o.dataset.value = it.id; o.textContent = it.text; dd.appendChild(o);
+    });
+    const sel = dd.querySelector('.selected');
+    if (sel) sel.scrollIntoView({ block: 'nearest' });
+  }
+  function openDropdown(filter){ renderOpts(filter); dd.hidden = false; }
+  function closeDropdown(){ dd.hidden = true; hlIdx = -1; }
+  function pickValue(val){
+    el.dataset.value = val;
+    const found = (el._items || []).find(x => String(x.id) === String(val));
+    input.value = found ? found.text : (val ? `(actual) ${val}` : '');
+    closeDropdown(); input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  function restoreDisplay(){
+    const found = (el._items || []).find(x => String(x.id) === String(el.dataset.value));
+    if (found) input.value = found.text;
+    else if (el.dataset.value){
+      const global = (state.finalidadesAll || []).find(x => String(x.id) === String(el.dataset.value));
+      input.value = `(actual) ${el.dataset.value}${global ? ' · ' + global.text : ''}`;
+    } else input.value = '';
+  }
+  function highlight(idx){
+    const opts = dd.querySelectorAll('.searchsel-option:not(.none)');
+    if (!opts.length) return;
+    opts.forEach(o => o.classList.remove('hl'));
+    hlIdx = (idx + opts.length) % opts.length;
+    opts[hlIdx].classList.add('hl'); opts[hlIdx].scrollIntoView({ block: 'nearest' });
+  }
+
+  input.addEventListener('focus', () => {
+    const curText = (el._items || []).find(x => String(x.id) === String(el.dataset.value))?.text || '';
+    openDropdown((input.value !== curText) ? input.value : ''); input.select();
+  });
+  input.addEventListener('input', () => openDropdown(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown'){ e.preventDefault(); if (dd.hidden) openDropdown(''); highlight(hlIdx + 1); } 
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); highlight(hlIdx - 1); } 
+    else if (e.key === 'Enter'){
+      const opts = dd.querySelectorAll('.searchsel-option:not(.none)');
+      if (!opts.length) return; e.preventDefault();
+      pickValue((hlIdx >= 0 && opts[hlIdx]) ? opts[hlIdx].dataset.value : opts[0].dataset.value);
+    } else if (e.key === 'Escape'){ closeDropdown(); restoreDisplay(); input.blur(); }
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => { if (dd.hidden || dd.contains(document.activeElement)) return; closeDropdown(); restoreDisplay(); }, 150);
+  });
+  dd.addEventListener('mousedown', (e) => {
+    const opt = e.target.closest('.searchsel-option');
+    if (!opt) return; e.preventDefault();
+    if (opt.classList.contains('none')){ pickValue(''); return; }
+    pickValue(opt.dataset.value);
+  });
+}
+
+/* =========================================================
+   RENDER EDITOR
+   ========================================================= */
+function renderEditor(){
+  const wrap = $('#editorWrap');
+  const adm = getActiva();
+  if (!adm || !adm.editada){
+    wrap.innerHTML = '<p class="muted">Selecciona una admisión de la lista.</p>';
+    $('#variacionesCard').hidden = true; $('#previewCard').hidden = true; $('#workspaceWrap').hidden = true; return;
+  }
+  $('#workspaceWrap').hidden = false; $('#variacionesCard').hidden = false; $('#previewCard').hidden = false;
+
+  searchSelItemsMap.clear(); secCounter = 0;
+  const a = adm.editada; let html = '';
+
+  if (a.Admision){
+    html += renderSection('Admisión', `#${a.Admision.numero_admision || ''} · ${a.Admision.fecha_admision || ''}`, renderFields(a.Admision, 'Admision', camposAdmision), true);
+    if (a.Admision.pacientes){
+      html += renderSection('Paciente (datos demográficos)', `id ${a.Admision.fk_paciente || ''}`, renderFields(a.Admision.pacientes, 'Admision.pacientes', camposPacientes), false);
+    }
+  }
+  const facturas = a.FacturasCompletasPasar?.FacturasF || [];
+  facturas.forEach((f, i) => {
+    html += renderSection(`Factura #${f.id_factura ?? ''}`, `Total: ${money(num(f.valor_total_factura))}`, renderFields(f, `FacturasCompletasPasar.FacturasF[${i}]`, camposFactura), false);
+  });
+  const consultas = a.FacturasCompletasPasar?.FacturasConsultasF || [];
+  consultas.forEach((c, i) => {
+    html += renderSection(`Consulta #${i+1} · factura ${c.id_factura_consultas ?? ''}`, `${c.nombre_procedimiento || ''} — ${money(num(c.valor_consulta))}`, renderConsulta(c, i), true);
+  });
+  const procs = a.FacturasCompletasPasar?.FacturasProcedimientosF || [];
+  procs.forEach((p, i) => {
+    html += renderSection(`Procedimiento #${p.id_facturas_procedimiento ?? i+1}`, `${money(num(p.valor_total))}`, renderFields(p, `FacturasCompletasPasar.FacturasProcedimientosF[${i}]`, camposProcedimiento), false);
+  });
+
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.searchsel').forEach(el => {
+    const items = searchSelItemsMap.get(el.dataset.path) || [];
+    initSearchSelect(el, items);
+    el.addEventListener('change', onFieldChange);
+  });
+  wrap.querySelectorAll('[data-path]:not(.searchsel)').forEach(el => {
+    el.addEventListener('change', onFieldChange);
+    if (el.tagName !== 'TEXTAREA' || el.dataset.type !== 'json') el.addEventListener('input', onFieldChange);
+  });
+  
+  // Sincronización de Diagnósticos (Input amigable)
+  wrap.querySelectorAll('.dx-sync-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const idx = e.target.dataset.idx;
+      const type = e.target.dataset.type;
+      const admLocal = getActiva();
+      if (!admLocal) return;
+      const c = admLocal.editada.FacturasCompletasPasar.FacturasConsultasF[idx];
+      const val = e.target.value.trim();
+      
+      if (type === 'P') {
+        const codigos = val.split(',').map(s => s.trim()).filter(Boolean);
+        c.consultasDiagnosticosPrincipales = codigos.map(cod => ({ id: cod, text: cod }));
+        c.facturas_consultas_enfermedades_diagnostico_principal = codigos.map(cod => ({ fk_enfermedad: cod }));
+        autoMarcarPaths([
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].consultasDiagnosticosPrincipales`,
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].facturas_consultas_enfermedades_diagnostico_principal`
+        ]);
+      } else {
+        const codigos = val.split(',').map(s => s.trim()).filter(Boolean);
+        c.consultasDiagnosticosRelacionales = codigos.map(cod => ({ id: cod, text: cod }));
+        c.facturas_consultas_enfermedades_diagnostico_relacional = codigos.map(cod => ({ fk_enfermedad: cod }));
+        autoMarcarPaths([
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].consultasDiagnosticosRelacionales`,
+          `FacturasCompletasPasar.FacturasConsultasF[${idx}].facturas_consultas_enfermedades_diagnostico_relacional`
+        ]);
+      }
+      updatePreview();
+      renderListaAdmisiones();
+    });
+  });
+
+  wrap.querySelectorAll('[data-incluir]').forEach(chk => chk.addEventListener('change', onIncluirChange));
+  wrap.querySelectorAll('.chk-sec').forEach(chk => {
+    chk.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+    chk.addEventListener('change', onSeccionCheck);
+  });
+  syncCheckboxesSeccion();
+}
+
+function renderSection(titulo, subtitulo, bodyHtml, open){
+  const id = 'sec' + (secCounter++);
+  return `<details class="section" data-sec="${id}" ${open ? 'open' : ''}>
+    <summary>
+      <input type="checkbox" class="chk-sec" data-sec-target="${id}" title="Marcar / desmarcar toda la sección" />
+      <span>${escapeHtml(titulo)}</span>
+      <span class="subtitle">${escapeHtml(subtitulo || '')}</span>
+    </summary>
+    <div class="body">${bodyHtml}</div>
+  </details>`;
+}
+
+function renderFields(obj, basePath, campos){
+  return `<div class="grid">${campos.map(c => renderField(c, obj, basePath)).join('')}</div>`;
+}
+
+function renderConsulta(c, idx){
+  const basePath = `FacturasCompletasPasar.FacturasConsultasF[${idx}]`;
+  const finalidadesFiltradas = sortByText((state.finalidadesAll || []).filter(f => String(f.IdActividad) === String(c.IdActividad)).map(f => ({ id: f.id, text: f.text })));
+  const items = camposConsulta.map(campo => campo.type === 'finalidad' ? renderSelect(campo, c, basePath, finalidadesFiltradas) : renderField(campo, c, basePath)).join('');
+  
+  const pathP = `${basePath}.consultasDiagnosticosPrincipales`;
+  const pathR = `${basePath}.consultasDiagnosticosRelacionales`;
+  const inclP = getIncluir().has(pathP);
+  const inclR = getIncluir().has(pathR);
+
+  // Extraer códigos para el input amigable
+  const dxP = (c.consultasDiagnosticosPrincipales || []).map(d => d.id || d.text || d.fk_enfermedad).filter(Boolean).join(', ');
+  const dxR = (c.consultasDiagnosticosRelacionales || []).map(d => d.id || d.text || d.fk_enfermedad).filter(Boolean).join(', ');
+
+  return `<div class="grid">
+    ${items}
+    <div class="field full${inclP ? ' incluido' : ''}">
+      <label class="field-label"><input type="checkbox" data-incluir="${pathP}" ${inclP ? 'checked' : ''} /><span>Diagnóstico Principal (CIE-10)</span></label>
+      <input type="text" class="dx-sync-input" data-idx="${idx}" data-type="P" value="${escapeHtml(dxP)}" placeholder="Ej: Z012" />
+      <small class="muted">Escribe el código. Se generará el JSON automáticamente al escribir.</small>
+    </div>
+    <div class="field full${inclR ? ' incluido' : ''}">
+      <label class="field-label"><input type="checkbox" data-incluir="${pathR}" ${inclR ? 'checked' : ''} /><span>Diagnósticos Relacionales (CIE-10, separados por coma)</span></label>
+      <input type="text" class="dx-sync-input" data-idx="${idx}" data-type="R" value="${escapeHtml(dxR)}" placeholder="Ej: I10, E11" />
+    </div>
+  </div>`;
+}
+
+function renderField(campo, obj, basePath){
+  if (campo.type === 'lista' || campo.type === 'finalidad') return renderSelect(campo, obj, basePath);
+  return renderInput(campo, obj, basePath);
+}
+
+function renderInput(campo, obj, basePath){
+  const path = `${basePath}.${campo.key}`;
+  const raw = getByPath(obj, campo.key);
+  const val = raw == null ? '' : raw;
+  const cls = campo.full ? 'full' : '';
+  const ro = campo.readonly ? 'readonly' : '';
+  const checked = getIncluir().has(path);
+  
+  if (campo.type === 'textarea') {
+    return `<div class="field ${cls}${checked ? ' incluido' : ''}">
+      <label class="field-label"><input type="checkbox" data-incluir="${path}" ${checked ? 'checked' : ''} /><span>${escapeHtml(labelFor(campo.key))}</span></label>
+      <textarea data-path="${path}" ${ro}>${escapeHtml(val)}</textarea>
+    </div>`;
+  }
+  
+  const type = campo.type === 'number' ? 'number' : campo.type;
+  return `<div class="field ${cls}${checked ? ' incluido' : ''}">
+    <label class="field-label"><input type="checkbox" data-incluir="${path}" ${checked ? 'checked' : ''} /><span>${escapeHtml(labelFor(campo.key))}</span></label>
+    <input type="${type}" data-path="${path}" value="${escapeHtml(val)}" ${ro} />
+  </div>`;
+}
+
+function renderSelect(campo, obj, basePath, overrideList){
+  const path = `${basePath}.${campo.key}`;
+  const raw = getByPath(obj, campo.key);
+  const current = raw == null ? '' : raw;
+  let items = overrideList || (state.data?.[campo.lista] || []).map(it => ({ id: it.id, text: it.text }));
+  
+  searchSelItemsMap.set(path, items);
+  const found = items.find(x => String(x.id) === String(current));
+  let displayText = found ? found.text : (current !== '' && current != null ? `(actual) ${current}` : '');
+  const cls = campo.full ? 'full' : '';
+  const checked = getIncluir().has(path);
+
+  return `<div class="field ${cls}${checked ? ' incluido' : ''}">
+    <label class="field-label"><input type="checkbox" data-incluir="${path}" ${checked ? 'checked' : ''} /><span>${escapeHtml(labelFor(campo.key))}</span></label>
+    <div class="searchsel" data-path="${path}" data-value="${escapeHtml(current)}">
+      <input type="text" class="searchsel-input" value="${escapeHtml(displayText)}" placeholder="Buscar o escribir…" autocomplete="off" />
+      <div class="searchsel-dropdown" hidden></div>
+    </div>
+  </div>`;
+}
+
+function labelFor(key){
+  const map = {
+    metodo_pago:'Método de pago', fk_entidad:'Entidad', fk_paciente:'Paciente', fk_usuario:'Usuario',
+    fk_contrato_entidad:'Contrato entidad', fecha_admision:'Fecha admisión', hora_admision:'Hora admisión',
+    observaciones:'Observaciones', direccion_paciente:'Dirección', fk_ocupacion:'Ocupación',
+    fk_nivel_educativo:'Nivel educativo', fk_grupo_etnico:'Grupo étnico', fk_discapacidad:'Discapacidad',
+    EnfoqueDiferencialIdGenero:'Género', IdOrientacionSexualEnfoqueDiferencial:'Orientación sexual',
+    fk_tipo_paciente:'Tipo paciente', fecha_emision:'Fecha emisión', hora_emision:'Hora emisión',
+    autorizacion:'Autorización', cuota_moderadora:'Cuota moderadora', valor_copago:'Valor copago',
+    valor_descuento:'Valor descuento', IdActividad:'Actividad', fk_finalida_consulta:'Finalidad',
+    fk_causa_externa:'Causa externa', tipo_diagnostico:'Tipo diagnóstico', fk_procedimiento:'Procedimiento',
+    fk_centro_servicios:'Centro servicios', IdServicio:'Servicio', IdModalidadAtencion:'Modalidad',
+    fecha_atencion:'Fecha atención', hora_atencion:'Hora atención', cantidad_consulta:'Cantidad',
+    valor_unitario_consulta:'Vr. unitario', valor_consulta:'Vr. consulta (auto)', neto_pagar:'Neto a pagar (auto)',
+    nombre_procedimiento:'Nombre procedimiento', fk_procedimiento_soat:'Código SOAT',
+    fk_finalidad_procedimiento:'Finalidad procedimiento', fk_enfermedad_diagnostico_principal:'Dx principal',
+    fk_centro_costos:'Centro de costos', IdViaIngreso:'Vía de ingreso',
+    fecha_procedimiento:'Fecha procedimiento', hora_procedimiento:'Hora procedimiento', 
+    cantidad:'Cantidad', valor_unitario:'Vr. unitario', valor_total:'Valor total (auto)'
+  };
+  return map[key] || key;
+}
+
+/* =========================================================
+   CHECKBOXES & EVENTS
+   ========================================================= */
+function onIncluirChange(e){
+  const path = e.target.dataset.incluir;
+  const adm = getActiva(); if (!adm) return;
+  e.target.checked ? adm.incluir.add(path) : adm.incluir.delete(path);
+  const field = e.target.closest('.field');
+  if (field) field.classList.toggle('incluido', e.target.checked);
+  syncCheckboxesSeccion(); updatePreview(); renderListaAdmisiones();
+}
+
+function onSeccionCheck(e){
+  const det = document.querySelector(`details[data-sec="${e.target.dataset.secTarget}"]`);
+  if (!det) return;
+  const adm = getActiva(); if (!adm) return;
+  det.querySelectorAll('[data-incluir]').forEach(c => {
+    c.checked = e.target.checked;
+    e.target.checked ? adm.incluir.add(c.dataset.incluir) : adm.incluir.delete(c.dataset.incluir);
+    const field = c.closest('.field'); if (field) field.classList.toggle('incluido', e.target.checked);
+  });
+  syncCheckboxesSeccion(); updatePreview(); renderListaAdmisiones();
+}
+
+function syncCheckboxesSeccion(){
+  const orig = getOriginal(), edit = getEditada(); if (!orig || !edit) return;
+  document.querySelectorAll('details[data-sec]').forEach(det => {
+    const chks = det.querySelectorAll('[data-incluir]');
+    const total = chks.length, marcados = Array.from(chks).filter(c => c.checked).length;
+    const master = det.querySelector('.chk-sec'); if (!master) return;
+    master.checked = total > 0 && marcados === total;
+    master.indeterminate = marcados > 0 && marcados < total;
+
+    let reales = 0;
+    chks.forEach(c => {
+      const path = c.dataset.incluir;
+      if (getIncluir().has(path) && JSON.stringify(getByPath(orig, path) ?? null) !== JSON.stringify(getByPath(edit, path) ?? null)) reales++;
+    });
+    let badge = det.querySelector('summary .badge-sec');
+    if (!badge){ badge = document.createElement('span'); badge.className = 'badge-sec'; det.querySelector('summary').appendChild(badge); }
+    badge.style.display = marcados === 0 ? 'none' : '';
+    badge.textContent = marcados === 0 ? '' : `${marcados}/${total} marcados` + (reales ? ` · ${reales} modif.` : '');
+  });
+}
+
+function onFieldChange(e){
+  const el = e.currentTarget, path = el.dataset.path;
+  const adm = getActiva(); if (!adm || !path) return;
+
+  if (el.classList.contains('searchsel')){
+    let value = el.dataset.value;
+    const original = getByPath(adm.original, path);
+    if (typeof original === 'number' && value !== '') value = Number(value);
+    else if (typeof original === 'string') value = String(value);
+    setByPath(adm.editada, path, value);
+    updatePreview(); renderListaAdmisiones();
+    if (path.endsWith('.IdActividad')) filtrarFinalidadConsulta(path);
+    return;
+  }
+
+  let value;
+  if (el.dataset.type === 'json'){
+    try { 
+      value = el.value.trim() ? JSON.parse(el.value) : []; 
+      el.style.borderColor = ''; 
+    } catch(err){ 
+      el.style.borderColor = 'var(--err)'; 
+      return;
+    }
+  } else if (el.type === 'number'){
+    value = el.value === '' ? 0 : Number(el.value);
+  } else {
+    value = el.value;
+  }
+
+  const original = getByPath(adm.original, path);
+  if (el.dataset.type !== 'json'){
+    if (typeof original === 'number' && el.value !== '') value = Number(value);
+    else if (typeof original === 'string') value = String(value);
+  }
+
+  setByPath(adm.editada, path, value);
+  updatePreview(); renderListaAdmisiones();
+
+  if (/FacturasConsultasF\[\d+\]\.(cantidad_consulta|valor_unitario_consulta|cuota_moderadora)$/.test(path)) recalcularConsulta(path);
+  if (/FacturasProcedimientosF\[\d+\]\.(cantidad|valor_unitario|cuota_moderadora)$/.test(path)) recalcularProcedimiento(path);
+}
+
+function filtrarFinalidadConsulta(path){
+  const m = path.match(/FacturasConsultasF\[(\d+)\]\.IdActividad/); if (!m) return;
+  const adm = getActiva(); if (!adm) return;
+  const idx = m[1], consulta = adm.editada.FacturasCompletasPasar.FacturasConsultasF[idx];
+  const finPath = `FacturasCompletasPasar.FacturasConsultasF[${idx}].fk_finalida_consulta`;
+  const filtradas = sortByText((state.finalidadesAll || []).filter(f => String(f.IdActividad) === String(consulta.IdActividad)).map(f => ({ id: f.id, text: f.text })));
+  
+  const el = document.querySelector(`.searchsel[data-path="${finPath}"]`); if (!el) return;
+  el._items = filtradas;
+  const input = el.querySelector('.searchsel-input');
+  const cur = el.dataset.value, found = filtradas.find(x => String(x.id) === String(cur));
+  input.value = found ? found.text : (cur ? `(actual) ${cur}` : '');
+}
+
+function autoMarcarPaths(paths){
+  const adm = getActiva(); if (!adm) return;
+  paths.forEach(p => {
+    adm.incluir.add(p);
+    const chk = document.querySelector(`[data-incluir="${p}"]`);
+    if (chk){ chk.checked = true; const f = chk.closest('.field'); if (f) f.classList.add('incluido'); }
+  });
+  syncCheckboxesSeccion();
+}
+
+function recalcularConsulta(path){
+  const m = path.match(/FacturasConsultasF\[(\d+)\]/); if (!m) return;
+  const adm = getActiva(); if (!adm) return;
+  const idx = m[1], c = adm.editada.FacturasCompletasPasar.FacturasConsultasF[idx];
+  c.valor_consulta = num(c.cantidad_consulta, 1) * num(c.valor_unitario_consulta, 0);
+  c.neto_pagar = Math.max(0, c.valor_consulta - num(c.cuota_moderadora, 0));
+  
+  const elV = document.querySelector(`input[data-path="FacturasCompletasPasar.FacturasConsultasF[${idx}].valor_consulta"]`);
+  const elN = document.querySelector(`input[data-path="FacturasCompletasPasar.FacturasConsultasF[${idx}].neto_pagar"]`);
+  if (elV) elV.value = c.valor_consulta;
+  if (elN) elN.value = c.neto_pagar;
+  
+  autoMarcarPaths([`FacturasCompletasPasar.FacturasConsultasF[${idx}].valor_consulta`, `FacturasCompletasPasar.FacturasConsultasF[${idx}].neto_pagar`]);
+  updatePreview(); renderListaAdmisiones();
+}
+
+function recalcularProcedimiento(path){
+  const m = path.match(/FacturasProcedimientosF\[(\d+)\]/); if (!m) return;
+  const adm = getActiva(); if (!adm) return;
+  const idx = m[1], p = adm.editada.FacturasCompletasPasar.FacturasProcedimientosF[idx];
+  p.valor_total = num(p.cantidad, 1) * num(p.valor_unitario, 0);
+  const elT = document.querySelector(`input[data-path="FacturasCompletasPasar.FacturasProcedimientosF[${idx}].valor_total"]`);
+  if (elT) elT.value = p.valor_total;
+  autoMarcarPaths([`FacturasCompletasPasar.FacturasProcedimientosF[${idx}].valor_total`]);
+  updatePreview(); renderListaAdmisiones();
+}
+
+/* =========================================================
+   PAYLOAD & PREVIEW
+   ========================================================= */
+function construirPayload(adm){
+  if (!adm || !adm.original) return null;
+  const payload = JSON.parse(JSON.stringify(adm.original));
+  for (const path of adm.incluir){
+    const v = getByPath(adm.editada, path);
+    setByPath(payload, path, v === undefined ? null : JSON.parse(JSON.stringify(v)));
+  }
+  return denormalizeDates(payload);
+}
+
+function calcularVariaciones(adm){
+  if (!adm || !adm.original) return [];
+  const out = [];
+  for (const path of adm.incluir){
+    const a = getByPath(adm.original, path), b = getByPath(adm.editada, path);
+    if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) out.push({ path, antes: a, despues: b });
+  }
+  return out;
+}
+
+let previewTimer = null;
+function updatePreview(){
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    const adm = getActiva(), payload = construirPayload(adm);
+    if (!payload){
+      $('#previewAdmision').textContent = '{ }';
+      $('#badgeCambios').textContent = '0 variaciones'; $('#badgeVariaciones').textContent = '0';
+      renderVariaciones([]); return;
+    }
+    $('#previewAdmision').textContent = JSON.stringify(payload, null, 2);
+    const variaciones = calcularVariaciones(adm), n = variaciones.length;
+    const badge = $('#badgeCambios');
+    badge.textContent = n === 0 ? '0 variaciones' : (n === 1 ? '1 variación' : n + ' variaciones');
+    badge.className = 'badge' + (n === 0 ? '' : ' badge-changes');
+    $('#badgeVariaciones').textContent = n;
+    renderVariaciones(variaciones);
+    syncCheckboxesSeccion();
+  }, 120);
+}
+
+function renderVariaciones(variaciones){
+  const wrap = $('#variacionesWrap'); if (!wrap) return;
+  if (!variaciones.length){
+    wrap.innerHTML = '<p class="muted">Aún no hay cambios en campos marcados. Usa los ☑ de cada campo para incluir modificaciones.</p>';
+    return;
+  }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>Campo</th><th>Antes (original)</th><th>Después (a enviar)</th></tr></thead>
+    <tbody>${variaciones.map(v => `<tr>
+      <td><code>${escapeHtml(v.path)}</code></td>
+      <td class="val-old">${escapeHtml(truncar(v.antes == null ? '∅' : (typeof v.antes === 'object' ? JSON.stringify(v.antes) : String(v.antes)), 60))}</td>
+      <td class="val-new">${escapeHtml(truncar(v.despues == null ? '∅' : (typeof v.despues === 'object' ? JSON.stringify(v.despues) : String(v.despues)), 60))}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+/* =========================================================
+   ACCIONES MASIVAS Y DE ARCHIVO
+   ========================================================= */
+function marcarTodo(){
+  const adm = getActiva(); if (!adm) return;
+  document.querySelectorAll('[data-incluir]').forEach(chk => {
+    chk.checked = true; adm.incluir.add(chk.dataset.incluir);
+    const f = chk.closest('.field'); if (f) f.classList.add('incluido');
+  });
+  syncCheckboxesSeccion(); updatePreview(); renderListaAdmisiones(); toast('Todos los campos marcados', 'ok');
+}
+function desmarcarTodo(){
+  const adm = getActiva(); if (!adm) return;
+  document.querySelectorAll('[data-incluir]').forEach(chk => {
+    chk.checked = false; adm.incluir.delete(chk.dataset.incluir);
+    const f = chk.closest('.field'); if (f) f.classList.remove('incluido');
+  });
+  syncCheckboxesSeccion(); updatePreview(); renderListaAdmisiones(); toast('Todos los campos desmarcados', '');
+}
+function marcarSoloCambios(){
+  const adm = getActiva(); if (!adm) return;
+  let total = 0;
+  document.querySelectorAll('[data-incluir]').forEach(chk => {
+    const path = chk.dataset.incluir;
+    const dif = JSON.stringify(getByPath(adm.original, path) ?? null) !== JSON.stringify(getByPath(adm.editada, path) ?? null);
+    chk.checked = dif;
+    if (dif){ adm.incluir.add(path); total++; } else adm.incluir.delete(path);
+    const f = chk.closest('.field'); if (f) f.classList.toggle('incluido', dif);
+  });
+  syncCheckboxesSeccion(); updatePreview(); renderListaAdmisiones();
+  toast(total === 0 ? 'No hay campos modificados' : `${total} campo(s) marcado(s)`, total ? 'ok' : '');
+}
+
+function marcarCambiosTodas(){
+  let totalAdm = 0, totalCampos = 0;
+  state.admisiones.forEach(adm => {
+    if (!adm.original) return;
+    adm.incluir.clear();
+    const paths = hojasDeObjeto(adm.editada);
+    let hubo = false;
+    paths.forEach(path => {
+      if (JSON.stringify(getByPath(adm.original, path) ?? null) !== JSON.stringify(getByPath(adm.editada, path) ?? null)){
+        adm.incluir.add(path); totalCampos++; hubo = true;
+      }
+    });
+    if (hubo) totalAdm++;
+  });
+  renderEditor(); updatePreview(); renderListaAdmisiones();
+  toast(`Marcados cambios en ${totalAdm} admisión(es) · ${totalCampos} campo(s)`, totalAdm ? 'ok' : '');
+}
+function desmarcarTodas(){
+  state.admisiones.forEach(adm => adm.incluir.clear());
+  renderEditor(); updatePreview(); renderListaAdmisiones(); toast('Todos los campos desmarcados en todas', '');
+}
+
+function hojasDeObjeto(obj, base = ''){
+  const out = [];
+  if (obj === null || typeof obj !== 'object'){ if (base) out.push(base); return out; }
+  if (Array.isArray(obj)){ obj.forEach((v, i) => out.push(...hojasDeObjeto(v, base ? `${base}[${i}]` : `[${i}]`))); return out; }
+  const keys = Object.keys(obj);
+  if (!keys.length && base){ out.push(base); return out; }
+  keys.forEach(k => out.push(...hojasDeObjeto(obj[k], base ? `${base}.${k}` : k)));
+  return out;
+}
+
+async function copiarJSON(){
+  const payload = construirPayload(getActiva());
+  if (!payload){ toast('Selecciona una admisión primero', 'err'); return; }
+  try { await navigator.clipboard.writeText(JSON.stringify(payload, null, 2)); toast('JSON copiado', 'ok'); }
+  catch(e){ toast('No se pudo copiar: ' + e.message, 'err'); }
+}
+function descargarJSON(){
+  const adm = getActiva(), payload = construirPayload(adm);
+  if (!payload){ toast('Selecciona una admisión primero', 'err'); return; }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `admision_${adm.numero}.json`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* =========================================================
+   SUBIR AL SERVIDOR (CON VALIDACIÓN ESTRICTA DE MENSAJE)
+   ========================================================= */
+async function subirAdmision(adm){
+  const payload = construirPayload(adm);
+  const res = await fetch(subirUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(payload) });
+  const text = await res.text();
+  let body; try { body = JSON.parse(text); } catch { body = text; }
+  return { res, body };
+}
+
+function evaluarExito(res, body) {
+  if (!res.ok) return { exito: false, msg: `HTTP ${res.status}` };
+  if (!body || typeof body !== 'object') return { exito: false, msg: 'Respuesta inválida del servidor' };
+  if (body.errores > 0) return { exito: false, msg: body.mensajeRetorno || `Errores: ${body.errores}` };
+  
+  const msg = (body.mensajeRetorno || '').toLowerCase();
+  if (!msg.includes('actualizo correctamente')) {
+    return { exito: false, msg: body.mensajeRetorno || 'No se recibió mensaje de éxito' };
+  }
+  return { exito: true, msg: body.mensajeRetorno };
+}
+
+async function subirActiva(){
+  const adm = getActiva();
+  if (!adm || !adm.original){ toast('Selecciona una admisión válida', 'err'); return; }
+  const variaciones = calcularVariaciones(adm);
+  if (variaciones.length === 0 && !confirm('No hay variaciones en campos marcados. Se enviará el JSON original. ¿Continuar?')) return;
+  
+  const btn = $('#btnSubir'), respEl = $('#subirResp'), originalHTML = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '⏳ Subiendo…'; respEl.hidden = true; respEl.innerHTML = '';
+  setStatus('Subiendo al servidor…', 'loading'); adm.estado = 'subiendo'; renderListaAdmisiones();
+
+  try {
+    const { res, body } = await subirAdmision(adm);
+    const evaluacion = evaluarExito(res, body);
+    const pretty = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+
+    if (!evaluacion.exito) {
+      respEl.hidden = false; 
+      respEl.innerHTML = `<div class="response err"><b>✖ Error: ${escapeHtml(evaluacion.msg)}</b><pre class="json">${escapeHtml(pretty)}</pre></div>`;
+      toast('Error: ' + evaluacion.msg, 'err'); 
+      setStatus('✖ Error al subir', 'err');
+      adm.estado = 'error'; 
+      adm.mensaje = evaluacion.msg; 
+      adm.respuestaSubida = body;
+    } else {
+      respEl.hidden = false; 
+      respEl.innerHTML = `<div class="response ok"><b>✔ Subido exitosamente</b><pre class="json">${escapeHtml(pretty || '(sin respuesta)')}</pre></div>`;
+      toast(`Admisión #${adm.numero} actualizada correctamente`, 'ok'); 
+      setStatus('✔ Subida exitosa', 'ok');
+      adm.original = normalizeDates(JSON.parse(JSON.stringify(construirPayload(adm))));
+      adm.incluir.clear(); 
+      adm.estado = 'ok'; 
+      adm.mensaje = null; 
+      adm.respuestaSubida = body;
+      renderEditor(); 
+      updatePreview();
+    }
+    renderListaAdmisiones();
+  } catch(e){
+    respEl.hidden = false; 
+    respEl.innerHTML = `<div class="response err"><b>✖ Error de red</b><pre class="json">${escapeHtml(e.message)}</pre></div>`;
+    toast('Error al subir: ' + e.message, 'err'); 
+    setStatus('✖ Error de red', 'err');
+    adm.estado = 'error'; 
+    adm.mensaje = e.message;
+  } finally {
+    btn.disabled = false; btn.innerHTML = originalHTML;
+    respEl.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+}
+
+async function subirTodas(){
+  const pendientes = state.admisiones.map((adm, i) => ({ adm, i, variaciones: calcularVariaciones(adm) })).filter(x => x.adm.original && x.variaciones.length > 0);
+  if (!pendientes.length){ toast('No hay admisiones con variaciones marcadas', ''); return; }
+  if (!confirm(`Se subirán ${pendientes.length} admisión(es):\n\n${pendientes.map(x => '#' + x.adm.numero).join(', ')}\n\n¿Continuar?`)) return;
+
+  const btn = $('#btnSubirTodas'), respEl = $('#subirTodasResp'), originalHTML = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '⏳ Subiendo…'; respEl.hidden = true; respEl.innerHTML = '';
+  setStatus('Subiendo lote…', 'loading');
+
+  const resultados = []; let ok = 0, err = 0;
+  for (let k = 0; k < pendientes.length; k++){
+    const { adm } = pendientes[k];
+    adm.estado = 'subiendo'; renderListaAdmisiones();
+    try {
+      const { res, body } = await subirAdmision(adm);
+      const evaluacion = evaluarExito(res, body);
+      
+      if (evaluacion.exito){
+        adm.original = normalizeDates(JSON.parse(JSON.stringify(construirPayload(adm))));
+        adm.incluir.clear(); 
+        adm.estado = 'ok'; 
+        adm.mensaje = null; 
+        adm.respuestaSubida = body; 
+        ok++;
+        resultados.push({ numero: adm.numero, ok: true, status: res.status, body });
+      } else {
+        adm.estado = 'error'; 
+        adm.mensaje = evaluacion.msg; 
+        adm.respuestaSubida = body; 
+        err++;
+        resultados.push({ numero: adm.numero, ok: false, status: res.status, body, msg: evaluacion.msg });
+      }
+    } catch(e){
+      adm.estado = 'error'; 
+      adm.mensaje = e.message; 
+      err++;
+      resultados.push({ numero: adm.numero, ok: false, status: 0, body: e.message, msg: e.message });
+    }
+    renderListaAdmisiones();
+  }
+
+  btn.disabled = false; btn.innerHTML = originalHTML;
+  const rowsHtml = resultados.map(r => `<tr>
+    <td>#${escapeHtml(r.numero)}</td>
+    <td>${r.ok ? '<span style="color:var(--ok)">✔ OK</span>' : '<span style="color:var(--err)">✖ Error</span>'}</td>
+    <td>${escapeHtml(String(r.status))}</td>
+    <td><code>${escapeHtml(truncar(r.msg || (typeof r.body === 'string' ? r.body : JSON.stringify(r.body)), 140))}</code></td>
+  </tr>`).join('');
+
+  respEl.hidden = false;
+  respEl.innerHTML = `<div class="response ${err === 0 ? 'ok' : 'err'}">
+    <b>${err === 0 ? '✔' : '⚠'} Resultado: ${ok} ok, ${err} error(es)</b>
+    <table style="margin-top:8px"><thead><tr><th>Admisión</th><th>Estado</th><th>HTTP</th><th>Detalle</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+  </div>`;
+  setStatus(err === 0 ? `✔ Lote subido (${ok})` : `⚠ Lote con errores (${ok} ok, ${err} err)`, err === 0 ? 'ok' : 'err');
+  toast(`Lote: ${ok} ok, ${err} error(es)`, err === 0 ? 'ok' : 'err');
+  if (getActiva()){ renderEditor(); updatePreview(); }
+  renderListaAdmisiones(); respEl.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function descartarCambiosActiva(){
+  const adm = getActiva(); if (!adm || !adm.original) return;
+  if (!confirm(`¿Descartar cambios de la admisión #${adm.numero}?`)) return;
+  adm.editada = JSON.parse(JSON.stringify(adm.original)); adm.incluir.clear();
+  renderEditor(); updatePreview(); renderListaAdmisiones(); toast('Cambios descartados', 'ok');
+}
+function descartarTodo(){
+  if (!state.admisiones.length) return;
+  if (!confirm(`¿Descartar las ${state.admisiones.length} admisión(es) cargadas?`)) return;
+  state.admisiones = []; state.activa = -1; renderListaAdmisiones();
+  $('#workspaceWrap').hidden = true; $('#loteProgress').classList.remove('show'); $('#loteProgress').innerHTML = '';
+  toast('Todo descartado', 'ok');
+}
+
+/* =========================================================
+   CATÁLOGOS Y CONSULTAS
+   ========================================================= */
+function renderCatalogos(){
+  const d = state.data || {};
+  const grupos = [
+    ['Actividades', d.actividades, a => `${a.id} · ${a.text}  [${a.EdadInicial}-${a.EdadFinal}d, sexo:${a.IdSexo}]`],
+    ['Finalidades', d.finalidades, f => `${f.id} · act:${f.IdActividad} · ${f.text}`],
+    ['Centros de servicios', d.centrosServicios, x => `${x.id} · ${x.text}`],
+    ['Servicios', d.servicios, x => `${x.id} · ${x.text}`],
+    ['Modalidades de atención', d.modalidadesAtencion, x => `${x.id} · ${x.text}`],
+    ['Causas externas', d.causasExternas, x => `${x.id} · ${x.text}`],
+    ['Tipos de diagnóstico', d.tiposDiagnostico, x => `${x.id} · ${x.text}`],
+    ['Usuarios', d.usuarios, x => `${x.id} · ${x.text}`],
+    ['Consultorios', d.consultorios, x => `${x.id} · ${x.text}`],
+    ['Vías de ingreso', d.viasIngreso, x => `${x.id} · ${x.text}`],
+  ];
+  $('#catalogosWrap').innerHTML = grupos.map(([titulo, arr, fmt]) => {
+    const list = Array.isArray(arr) ? arr : [];
+    return `<div class="catalogo-card"><h4>${titulo} <span>(${list.length})</span></h4><div class="list">${escapeHtml(list.length ? list.map(fmt).join('\n') : '(vacío)')}</div></div>`;
+  }).join('');
+}
+
+async function loadConsultas(){
+  const wrap = $('#consultasWrap'); wrap.innerHTML = '<p class="muted">Cargando…</p>';
+  try {
+    let consultas = await apiListas('/Consultas');
+    if (!Array.isArray(consultas) || !consultas.length){ wrap.innerHTML = '<p class="muted">No hay consultas registradas.</p>'; return; }
+    consultas = consultas.slice().sort((a,b) => String(a.nombre_procedimiento || '').localeCompare(String(b.nombre_procedimiento || ''), 'es', { numeric:true, sensitivity:'base' }));
+    wrap.innerHTML = consultas.map((c) => {
+      const diagP = (c.consultasDiagnosticosPrincipales || []).map(d => `<span class="tag">${escapeHtml(d.text || d.id)}</span>`).join('') || '<span class="muted">—</span>';
+      return `<details class="section">
+        <summary><span>#${escapeHtml(c.id_factura_consultas ?? '—')} · ${escapeHtml(c.nombre_procedimiento || 'Consulta')}</span><span class="subtitle">${escapeHtml(c.fecha_atencion || '')} ${escapeHtml(c.hora_atencion || '')}</span></summary>
+        <div class="body">
+          <div class="kv">
+            <div>Actividad<b>${escapeHtml(String(c.IdActividad ?? '—'))}</b></div>
+            <div>Finalidad<b>${escapeHtml(String(c.fk_finalida_consulta ?? '—'))}</b></div>
+            <div>Vr. consulta<b>${money(num(c.valor_consulta))}</b></div>
+            <div>Neto a pagar<b>${money(num(c.neto_pagar))}</b></div>
+          </div>
+          <div class="muted" style="margin-top:10px;margin-bottom:4px">Diagnósticos principales:</div><div>${diagP}</div>
+          <pre class="json" style="margin-top:10px">${escapeHtml(JSON.stringify(c, null, 2))}</pre>
+        </div>
+      </details>`;
+    }).join('');
+  } catch(e){
+    wrap.innerHTML = `<p class="muted" style="color:var(--err)">Error: ${e.message}</p>`;
+    toast('No se pudo cargar /Consultas', 'err');
+  }
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+function setupTabs(){
+  $$('.tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.tabs button').forEach(b => b.classList.toggle('active', b === btn));
+      $$('section.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + btn.dataset.tab));
+    });
+  });
+}
+
+function setupEvents(){
+  const baseInput = $('#baseUrl');
+  baseInput.value = BASE;
+  baseInput.addEventListener('change', () => {
+    BASE = baseInput.value.trim().replace(/\/+$/, '');
+    localStorage.setItem('facturacion_base', BASE);
+    toast('URL base actualizada', 'ok'); cargarTodo();
+  });
+  $('#btnReload').addEventListener('click', cargarTodo);
+  $('#btnCargarLote').addEventListener('click', cargarLote);
+  $('#btnDescartarTodo').addEventListener('click', descartarTodo);
+  $('#btnMarcarTodo').addEventListener('click', marcarTodo);
+  $('#btnDesmarcarTodo').addEventListener('click', desmarcarTodo);
+  $('#btnMarcarCambiados').addEventListener('click', marcarSoloCambios);
+  $('#btnMarcarCambiadosTodas').addEventListener('click', marcarCambiosTodas);
+  $('#btnDesmarcarTodas').addEventListener('click', desmarcarTodas);
+  $('#btnDescartarCambios').addEventListener('click', descartarCambiosActiva);
+  $('#btnCopiar').addEventListener('click', copiarJSON);
+  $('#btnDescargar').addEventListener('click', descargarJSON);
+  $('#btnSubir').addEventListener('click', subirActiva);
+  $('#btnSubirTodas').addEventListener('click', subirTodas);
+  $('#btnLoadConsultas').addEventListener('click', loadConsultas);
+  $('#numerosAdmision').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); cargarLote(); } });
+}
+
+(function init(){ setupTabs(); setupEvents(); cargarTodo(); })();
+</script>
+</body>
+</html>

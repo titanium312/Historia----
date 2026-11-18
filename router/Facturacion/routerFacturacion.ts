@@ -3,6 +3,8 @@ import { buscarIdAdmision } from './buscador/1-buscarIdAdmision';
 import { buscarDatosAdmision } from './buscador/2-buscarDatosAdmision';
 import { FacturasBuscar } from './buscador/3-FacturasBuscar';
 import { buscarFacturaSelectUsuarios } from './buscador/4-Profecionales';
+import { datosUsuario } from './buscador/5-datosUsuario';
+
 import { routerFacturacionLIsta } from './buscador/Array/routerFacturacionLIsta';
 
 
@@ -15,6 +17,7 @@ const routerFacturacion = Router();
 routerFacturacion.post('/buscarIdAdmision', buscarIdAdmision);
 routerFacturacion.post('/buscarDatosAdmision', buscarDatosAdmision);
 routerFacturacion.post('/FacturasBuscar', FacturasBuscar);
+routerFacturacion.post('/datosUsuario', datosUsuario);
 routerFacturacion.post('/buscarFacturaSelectUsuarios', buscarFacturaSelectUsuarios);
 
 routerFacturacion.use('/', routerFacturacionLIsta);
