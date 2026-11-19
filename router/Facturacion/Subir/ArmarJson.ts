@@ -22,7 +22,7 @@ const PACIENTE_KEYS = [
   "enfoque_diferencial_trabajadora_sexual", "enfoque_diferencial_poblacion_lgbti",
   "enfoque_diferencial_desempleado", "enfoque_diferencial_mujer_nino_menor_ano",
   "enfoque_diferencial_adulto_mayor",
-  "fk_tipo_paciente",              // ← AGREGAR ESTA LÍNEA
+  "fk_tipo_paciente",
   "EnfoqueDiferencialHabitanteCalle",
   "EnfoqueMadreComunitaria", "EnfoqueDesmovilizado", "EnfoqueCentroPsiquiatrico",
   "EnfoqueOtroGrupoPoblacional"
@@ -64,14 +64,6 @@ const hoyMMDDYYYY = (): string => {
  * ⚠️ La API de salud que consume este JSON espera fechas en **MM/DD/YYYY**.
  * El origen (sistema colombiano) entrega fechas en **DD/MM/YYYY**.
  * Esta función normaliza CUALQUIER entrada a MM/DD/YYYY.
- *
- * Reglas:
- *   - Formato ISO (YYYY-MM-DD / YYYY/MM/DD) → se reordena a MM/DD/YYYY.
- *   - DD/MM/YYYY o MM/DD/YYYY:
- *       · Si el primero > 12 → seguro es día  → swap a MM/DD.
- *       · Si el segundo > 12 → seguro es día  → ya está en MM/DD.
- *       · Ambos ≤ 12 (ambiguo) → se asume origen DD/MM (Colombia) → swap.
- *   - .NET /Date(ms)/, Date nativo y fallback Date.parse también soportados.
  */
 function toApiDate(v: any): string {
   if (v === null || v === undefined || v === "") return "";
@@ -104,16 +96,12 @@ function toApiDate(v: any): string {
     const a = Number(mdy[1]);
     const b = Number(mdy[2]);
     const y = mdy[3];
-
-    // Primero > 12 → seguro es día (DD/MM) → swap a MM/DD
     if (a > 12) {
       return `${String(b).padStart(2, "0")}/${String(a).padStart(2, "0")}/${y}`;
     }
-    // Segundo > 12 → seguro es día (MM/DD) → ya está bien
     if (b > 12) {
       return `${String(a).padStart(2, "0")}/${String(b).padStart(2, "0")}/${y}`;
     }
-    // Ambiguo → asumir origen DD/MM (Colombia) → swap a MM/DD
     return `${String(b).padStart(2, "0")}/${String(a).padStart(2, "0")}/${y}`;
   }
 
@@ -156,6 +144,45 @@ const preserveObjectOrStr = (v: any): any => {
   if (typeof v === "object") return v;
   return String(v);
 };
+
+/* ---------- Catálogo CIE-10 (opcional) ---------- */
+/**
+ * Si querés que `consultasDiagnosticosPrincipales[].text` salga como
+ * "Z012 - EXAMEN ODONTOLOGICO" (con descripción), implementá este lookup
+ * contra tu catálogo local / tabla `enfermedades` / API de CIE-10.
+ *
+ * Mientras devuelva `undefined`, el `text` queda como el código solo: "Z012".
+ *
+ * Nota: por ahora es síncrono. Si tu lookup es async (BD/HTTP), precargá
+ * los nombres en `armarTemplate` antes de mapear consultas.
+ */
+function lookupCIE10Nombre(_code: string): string | undefined {
+  // TODO: reemplazar por lookup real. Ejemplo:
+  //   const row = db.prepare("SELECT nombre FROM cie10 WHERE codigo = ?").get(_code);
+  //   return row?.nombre;
+  return undefined;
+}
+
+/**
+ * Normaliza un ítem de diagnóstico (venga de consulta o procedimiento)
+ * al shape que espera la API destino.
+ */
+function toDiagOut(d: any): {
+  id: string;
+  text: string;
+  fk_enfermedad: string;
+} {
+  const code = String(d?.fk_enfermedad ?? d?.id ?? "").trim();
+  const rawName =
+    d?.nombre ??
+    d?.text ??
+    d?.enfermedades?.nombre ??
+    d?.enfermedades?.descripcion ??
+    undefined;
+  const name = (rawName && String(rawName).trim()) || lookupCIE10Nombre(code);
+  const text = name ? `${code} - ${name}` : code;
+  return { id: code, text, fk_enfermedad: code };
+}
 
 /* ---------- Constructores ---------- */
 
@@ -304,14 +331,32 @@ function armarFacturaF(src: any) {
   };
 }
 
-function armarFacturaConsulta(src: any, index: number, total: number, fechaAdmisionFallback: string) {
-  const diagPrincRaw = Array.isArray(src.facturas_consultas_enfermedades_diagnostico_principal)
-    ? src.facturas_consultas_enfermedades_diagnostico_principal : [];
-  const diagPrinc = uniqBy(diagPrincRaw, (d: any) => d?.fk_enfermedad);
-  const consultasDiagPrinc = diagPrinc.map((d: any) => ({
-    id: d.fk_enfermedad,
-    text: d.nombre || d.text || d.fk_enfermedad,
-  }));
+function armarFacturaConsulta(
+  src: any,
+  index: number,
+  total: number,
+  fechaAdmisionFallback: string,
+  fallbackDiagPrinc: { fk_enfermedad: string; nombre?: string }[] = []
+) {
+  /* ── Diagnóstico principal ──
+     Si la consulta trae diagnósticos, se usan esos.
+     Si viene vacío (caso típico en este upstream), se usa el fallback
+     construido desde los procedimientos de la misma factura. */
+  const srcPrincRaw = Array.isArray(src.facturas_consultas_enfermedades_diagnostico_principal)
+    && src.facturas_consultas_enfermedades_diagnostico_principal.length > 0
+    ? src.facturas_consultas_enfermedades_diagnostico_principal
+    : fallbackDiagPrinc;
+
+  const diagPrincUniq = uniqBy(srcPrincRaw, (d: any) => d?.fk_enfermedad ?? d?.id);
+  const consultasDiagPrinc = diagPrincUniq.map(toDiagOut);
+
+  /* ── Diagnóstico relacional ──
+     Ahora SÍ se leen del origen (antes estaban hardcodeados a []). */
+  const srcRelRaw = Array.isArray(src.facturas_consultas_enfermedades_diagnostico_relacional)
+    ? src.facturas_consultas_enfermedades_diagnostico_relacional
+    : [];
+  const diagRelUniq = uniqBy(srcRelRaw, (d: any) => d?.fk_enfermedad ?? d?.id);
+  const consultasDiagRel = diagRelUniq.map(toDiagOut);
 
   const fechaAtencion = toApiDate(src.fecha_atencion) || fechaAdmisionFallback;
 
@@ -352,11 +397,13 @@ function armarFacturaConsulta(src: any, index: number, total: number, fechaAdmis
     IdServicio: str(src.IdServicio),
     IdModalidadAtencion: num0(src.IdModalidadAtencion),
     consultasDiagnosticosPrincipales: consultasDiagPrinc,
-    consultasDiagnosticosRelacionales: [],
-    facturas_consultas_enfermedades_diagnostico_principal: diagPrinc.map((d: any) => ({
+    consultasDiagnosticosRelacionales: consultasDiagRel,
+    facturas_consultas_enfermedades_diagnostico_principal: consultasDiagPrinc.map(d => ({
       fk_enfermedad: d.fk_enfermedad,
     })),
-    facturas_consultas_enfermedades_diagnostico_relacional: [],
+    facturas_consultas_enfermedades_diagnostico_relacional: consultasDiagRel.map(d => ({
+      fk_enfermedad: d.fk_enfermedad,
+    })),
   };
 }
 
@@ -439,16 +486,41 @@ async function armarTemplate(respuestaCombinar: any) {
   const arrF = Array.isArray(fcpSrc.FacturasF) ? fcpSrc.FacturasF : [];
   fcpOut.FacturasF = arrF.map(armarFacturaF);
 
+  const arrP = Array.isArray(fcpSrc.FacturasProcedimientosF) ? fcpSrc.FacturasProcedimientosF : [];
+
+  /* ── Fallback de diagnóstico principal por `fk_factura` ──
+     En este upstream las consultas vienen con los arrays de diagnóstico
+     vacíos, pero los procedimientos de la misma factura sí traen
+     `fk_enfermedad_diagnostico_principal`. Construimos un mapa
+     fk_factura → [ { fk_enfermedad, nombre? } ] para rellenar la consulta. */
+  const diagFallbackByFactura = new Map<string, { fk_enfermedad: string; nombre?: string }[]>();
+  for (const p of arrP) {
+    const fkFactura = str(p?.fk_factura).trim();
+    const code = str(p?.fk_enfermedad_diagnostico_principal).trim();
+    if (!fkFactura || !code) continue;
+
+    if (!diagFallbackByFactura.has(fkFactura)) diagFallbackByFactura.set(fkFactura, []);
+    const list = diagFallbackByFactura.get(fkFactura)!;
+    if (!list.some(x => x.fk_enfermedad === code)) {
+      const nombre =
+        p?.enfermedades?.nombre ??
+        p?.enfermedades?.descripcion ??
+        undefined;
+      list.push(nombre ? { fk_enfermedad: code, nombre } : { fk_enfermedad: code });
+    }
+  }
+
   const arrC = Array.isArray(fcpSrc.FacturasConsultasF) ? fcpSrc.FacturasConsultasF : [];
-  fcpOut.FacturasConsultasF = arrC.map((it: any, i: number) =>
-    armarFacturaConsulta(it, i, arrC.length, fechaAdmision)
-  );
+  fcpOut.FacturasConsultasF = arrC.map((it: any, i: number) => {
+    const fkFactura = str(it?.fk_factura).trim();
+    const fallback = diagFallbackByFactura.get(fkFactura) ?? [];
+    return armarFacturaConsulta(it, i, arrC.length, fechaAdmision, fallback);
+  });
 
   // Fallbacks de profesional/recurso desde la primera consulta
   const usuarioFallback = str(arrC[0]?.fk_usuario) || "1";
   const recursoFallback = str(arrC[0]?.fk_recurso) || "1";
 
-  const arrP = Array.isArray(fcpSrc.FacturasProcedimientosF) ? fcpSrc.FacturasProcedimientosF : [];
   fcpOut.FacturasProcedimientosF = arrP.map((it: any) =>
     armarFacturaProcedimiento(it, fechaAdmision, usuarioFallback, recursoFallback)
   );

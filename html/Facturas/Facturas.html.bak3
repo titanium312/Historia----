@@ -171,6 +171,24 @@
   .batch-progress.show{display:block}
   .batch-progress b{color:var(--text)}
   .lote-textarea{min-height:110px;font-family:ui-monospace,monospace;font-size:12px}
+  .badge-tipo{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#0b1427;border:1px solid #1e40af;color:#93c5fd}
+  .badge-tipo.warn{background:#231803;border-color:#5a3d0d;color:#fcd34d}
+  .preset-banner{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;margin-bottom:12px;border-radius:8px;background:#0b1427;border:1px solid #1e40af;font-size:12px;color:#93c5fd}
+  .preset-banner.warn{background:#231803;border-color:#5a3d0d;color:#fcd34d}
+  .preset-banner b{color:#e6edf7}
+  .preset-banner .btn.small{background:#2563eb;color:#fff;border:0;padding:5px 10px;border-radius:7px;cursor:pointer;font-weight:700;font-size:11px}
+  .preset-banner .btn.small:hover{background:#1d4ed8}
+  .preset-tipo-list{display:flex;flex-direction:column;gap:6px}
+  .preset-tipo-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:#0b1427;border:1px solid var(--line);font-size:12px;color:var(--text)}
+  .preset-tipo-row .btn.small{background:#2563eb;color:#fff;border:0;padding:5px 10px;border-radius:7px;cursor:pointer;font-weight:700;font-size:11px}
+  .preset-tipo-row .btn.small:hover{background:#1d4ed8}
+  .campo-preset-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 10px;border-radius:6px;background:#0b1427;border:1px solid var(--line);margin-bottom:4px;cursor:pointer;font-size:12px}
+  .campo-preset-row:hover{background:var(--panel-2)}
+  .campo-preset-row input[type=checkbox]{accent-color:var(--primary);width:14px;height:14px;cursor:pointer;margin:0}
+  .campo-preset-key{font-family:ui-monospace,monospace;color:#a7c4f7}
+  .campo-preset-val{font-family:ui-monospace,monospace;color:#86efac;background:#0b1f15;padding:1px 6px;border-radius:4px;border:1px solid #164e2f;white-space:nowrap}
+  #tipoConsultaSel{background:#0b1427;border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;width:100%;outline:none;font-family:inherit;cursor:pointer}
+  #tipoConsultaSel:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
 </style>
 </head>
 <body>
@@ -312,6 +330,84 @@ const state = {
 };
 const searchSelItemsMap = new Map();
 let secCounter = 0;
+
+/* ── Presets por tipo de consulta (primer diagnóstico CIE-10) ── */
+const TIPOS_CONSULTA = {
+  Z012: {
+    nombre: 'Examen odontológico',
+    campos: { IdActividad: 8, fk_finalida_consulta: 11, fk_causa_externa: 40, tipo_diagnostico: 1, IdServicio: '334', IdModalidadAtencion: 0, fk_centro_servicios: '747', fk_centro_costos: '517', valor_unitario_consulta: 38900, cuota_moderadora: 0 }
+  },
+  Z003: {
+    nombre: 'Examen del estado de desarrollo del adolescente',
+    // TODO: reemplazar por los valores reales de Z003
+    campos: { IdActividad: 8, fk_finalida_consulta: 11, fk_causa_externa: 40, tipo_diagnostico: 1, IdServicio: '334', IdModalidadAtencion: 0, fk_centro_servicios: '747', fk_centro_costos: '517', valor_unitario_consulta: 38900, cuota_moderadora: 0 }
+  },
+  Z001: {
+    nombre: 'Infancia y adolescencia',
+    // TODO: reemplazar por los valores reales de Z001
+    campos: { IdActividad: 8, fk_finalida_consulta: 11, fk_causa_externa: 40, tipo_diagnostico: 1, IdServicio: '334', IdModalidadAtencion: 0, fk_centro_servicios: '747', fk_centro_costos: '517', valor_unitario_consulta: 38900, cuota_moderadora: 0 }
+  }
+};
+
+function detectarTipoConsulta(c){
+  const dx = c?.consultasDiagnosticosPrincipales?.[0]?.id
+          ?? c?.consultasDiagnosticosPrincipales?.[0]?.text
+          ?? c?.facturas_consultas_enfermedades_diagnostico_principal?.[0]?.fk_enfermedad;
+  return dx && TIPOS_CONSULTA[dx] ? String(dx) : null;
+}
+
+function aplicarPresetConsulta(adm, idx){
+  const c = adm.editada.FacturasCompletasPasar.FacturasConsultasF[idx];
+  const tipo = detectarTipoConsulta(c);
+  if (!tipo) return null;
+  const preset = TIPOS_CONSULTA[tipo];
+  const base = 'FacturasCompletasPasar.FacturasConsultasF[' + idx + ']';
+  Object.entries(preset.campos).forEach(([k, v]) => {
+    const p = base + '.' + k;
+    setByPath(adm.editada, p, v);
+    adm.incluir.add(p);
+  });
+  c.valor_consulta = num(c.cantidad_consulta, 1) * num(c.valor_unitario_consulta, 0);
+  c.neto_pagar = Math.max(0, c.valor_consulta - num(c.cuota_moderadora, 0));
+  adm.incluir.add(base + '.valor_consulta');
+  adm.incluir.add(base + '.neto_pagar');
+  return tipo;
+}
+
+function leerConfigTipo(tipo){
+  try { return JSON.parse(localStorage.getItem('facturacion_tipo_config_' + tipo) || '{}'); } catch { return {}; }
+}
+function guardarConfigTipo(tipo, config){
+  try { localStorage.setItem('facturacion_tipo_config_' + tipo, JSON.stringify(config)); } catch {}
+}
+
+function aplicarPresetConCampos(adm, idx, tipo, camposSel){
+  const c = adm.editada.FacturasCompletasPasar.FacturasConsultasF[idx];
+  const base = 'FacturasCompletasPasar.FacturasConsultasF[' + idx + ']';
+  camposSel.forEach(k => {
+    const p = base + '.' + k;
+    setByPath(adm.editada, p, TIPOS_CONSULTA[tipo].campos[k]);
+    adm.incluir.add(p);
+  });
+  c.valor_consulta = num(c.cantidad_consulta, 1) * num(c.valor_unitario_consulta, 0);
+  c.neto_pagar = Math.max(0, c.valor_consulta - num(c.cuota_moderadora, 0));
+  adm.incluir.add(base + '.valor_consulta');
+  adm.incluir.add(base + '.neto_pagar');
+}
+
+function aplicarPresetTipo(tipo){
+  const adm = getActiva(); if (!adm) return;
+  const consultas = adm.editada.FacturasCompletasPasar?.FacturasConsultasF || [];
+  const idxs = [];
+  consultas.forEach((c, i) => { if (detectarTipoConsulta(c) === tipo) idxs.push(i); });
+  if (!idxs.length){ toast('No hay consultas de ese tipo', 'err'); return; }
+  if (!confirm('¿Aplicar preset ' + tipo + ' a ' + idxs.length + ' consulta(s)?')) return;
+  idxs.forEach(i => aplicarPresetConsulta(adm, i));
+  renderEditor();
+  updatePreview();
+  renderListaAdmisiones();
+  toast('Preset ' + tipo + ' aplicado a ' + idxs.length + ' consulta(s)', 'ok');
+}
 
 function getActiva(){ return (state.activa >= 0 && state.activa < state.admisiones.length) ? state.admisiones[state.activa] : null; }
 function getOriginal(){ const a = getActiva(); return a ? a.original : null; }
@@ -728,14 +824,108 @@ function renderEditor(){
   });
   const consultas = a.FacturasCompletasPasar?.FacturasConsultasF || [];
   consultas.forEach((c, i) => {
-    html += renderSection(`Consulta #${i+1} · factura ${c.id_factura_consultas ?? ''}`, `${c.nombre_procedimiento || ''} — ${money(num(c.valor_consulta))}`, renderConsulta(c, i), true);
+    const tipo = detectarTipoConsulta(c);
+    const badge = tipo
+      ? '<span class="badge-tipo" title="' + escapeHtml(TIPOS_CONSULTA[tipo].nombre) + '">🏷 ' + escapeHtml(tipo) + '</span>'
+      : '<span class="badge-tipo warn" title="Sin preset para este diagnóstico">⚠ OTRO</span>';
+    html += renderSection(`Consulta #${i+1} · factura ${c.id_factura_consultas ?? ''}`, `${c.nombre_procedimiento || ''} — ${money(num(c.valor_consulta))}`, renderConsulta(c, i), true, badge);
   });
   const procs = a.FacturasCompletasPasar?.FacturasProcedimientosF || [];
   procs.forEach((p, i) => {
     html += renderSection(`Procedimiento #${p.id_facturas_procedimiento ?? i+1}`, `${money(num(p.valor_total))}`, renderFields(p, `FacturasCompletasPasar.FacturasProcedimientosF[${i}]`, camposProcedimiento), false);
   });
+  if (consultas.length){
+    const porTipo = {};
+    consultas.forEach(c => {
+      const t = detectarTipoConsulta(c) || 'OTRO';
+      porTipo[t] = (porTipo[t] || 0) + 1;
+    });
+    const opciones = Object.keys(TIPOS_CONSULTA).map(t => {
+      const n = porTipo[t] || 0;
+      const label = t + ' · ' + TIPOS_CONSULTA[t].nombre + ' (' + n + ' en esta admisión)';
+      return '<option value="' + t + '"' + (n ? '' : ' disabled') + '>' + escapeHtml(label) + '</option>';
+    }).join('');
+    html = '<details class="section" open><summary><span>🏷 Editar por tipo de consulta</span><span class="subtitle">' + consultas.length + ' consulta(s) en esta admisión</span></summary>'
+      + '<div class="body">'
+      + '<div class="field"><label class="field-label"><span>Tipo de consulta a editar</span></label>'
+      + '<select id="tipoConsultaSel"><option value="">— Selecciona un tipo —</option>' + opciones + '</select></div>'
+      + '<div id="camposTipoWrap" style="margin-top:12px"></div>'
+      + '<div class="row" style="margin-top:12px" id="accionesTipoWrap" hidden>'
+      + '<button type="button" class="btn" id="btnAplicarTipoSel">⚡ Aplicar a consultas de este tipo</button>'
+      + '<button type="button" class="btn ghost small" id="btnMarcarCamposTipo">☑ Marcar todos los campos</button>'
+      + '<button type="button" class="btn ghost small" id="btnDesmarcarCamposTipo">☐ Desmarcar todos</button>'
+      + '</div></div></details>' + html;
+  }
 
   wrap.innerHTML = html;
+
+  wrap.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cidx = parseInt(btn.dataset.consultaIdx, 10);
+      const tt = aplicarPresetConsulta(adm, cidx);
+      if (!tt) { toast('Sin preset para esta consulta', 'err'); return; }
+      renderEditor(); updatePreview(); renderListaAdmisiones();
+      toast('Preset ' + tt + ' aplicado', 'ok');
+    });
+  });
+  const tipoSel = wrap.querySelector('#tipoConsultaSel');
+  if (tipoSel){
+    const camposWrap = wrap.querySelector('#camposTipoWrap');
+    const accionesWrap = wrap.querySelector('#accionesTipoWrap');
+    const btnAplicar = wrap.querySelector('#btnAplicarTipoSel');
+    const btnMarcarTodos = wrap.querySelector('#btnMarcarCamposTipo');
+    const btnDesmarcarTodos = wrap.querySelector('#btnDesmarcarCamposTipo');
+
+    function renderCamposTipo(tipo){
+      const preset = TIPOS_CONSULTA[tipo];
+      const config = leerConfigTipo(tipo);
+      camposWrap.innerHTML = Object.entries(preset.campos).map(([k, v]) => {
+        const checked = config[k] !== false;
+        return '<label class="campo-preset-row"><input type="checkbox" data-key="' + escapeHtml(k) + '"' + (checked ? ' checked' : '') + ' /><span class="campo-preset-key">' + escapeHtml(k) + '</span><span class="campo-preset-val">' + escapeHtml(String(v)) + '</span></label>';
+      }).join('');
+      accionesWrap.hidden = false;
+      const n = (porTipo[tipo] || 0);
+      btnAplicar.textContent = '⚡ Aplicar a ' + n + ' consulta(s) de tipo ' + tipo;
+      btnAplicar.disabled = n === 0;
+    }
+
+    tipoSel.addEventListener('change', e => {
+      const tipo = e.target.value;
+      if (!tipo){ camposWrap.innerHTML = ''; accionesWrap.hidden = true; return; }
+      renderCamposTipo(tipo);
+    });
+
+    camposWrap.addEventListener('change', () => {
+      const tipo = tipoSel.value; if (!tipo) return;
+      const config = {};
+      camposWrap.querySelectorAll('input[type=checkbox]').forEach(c => { config[c.dataset.key] = c.checked; });
+      guardarConfigTipo(tipo, config);
+    });
+
+    btnMarcarTodos.addEventListener('click', () => {
+      camposWrap.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = true);
+      camposWrap.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    btnDesmarcarTodos.addEventListener('click', () => {
+      camposWrap.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+      camposWrap.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    btnAplicar.addEventListener('click', () => {
+      const tipo = tipoSel.value; if (!tipo) return;
+      const camposSel = Array.from(camposWrap.querySelectorAll('input[type=checkbox]:checked')).map(c => c.dataset.key);
+      if (!camposSel.length){ toast('Marca al menos un campo', 'err'); return; }
+      const admActiva = getActiva(); if (!admActiva) return;
+      const consultasAdm = admActiva.editada.FacturasCompletasPasar?.FacturasConsultasF || [];
+      const idxs = [];
+      consultasAdm.forEach((c, i) => { if (detectarTipoConsulta(c) === tipo) idxs.push(i); });
+      if (!idxs.length){ toast('No hay consultas de ese tipo en la admisión', 'err'); return; }
+      if (!confirm('¿Aplicar ' + camposSel.length + ' campo(s) del preset ' + tipo + ' a ' + idxs.length + ' consulta(s)?')) return;
+      idxs.forEach(i => aplicarPresetConCampos(admActiva, i, tipo, camposSel));
+      renderEditor(); updatePreview(); renderListaAdmisiones();
+      toast('Aplicado a ' + idxs.length + ' consulta(s)', 'ok');
+    });
+  }
 
   wrap.querySelectorAll('.searchsel').forEach(el => {
     const items = searchSelItemsMap.get(el.dataset.path) || [];
@@ -787,13 +977,13 @@ function renderEditor(){
   syncCheckboxesSeccion();
 }
 
-function renderSection(titulo, subtitulo, bodyHtml, open){
+function renderSection(titulo, subtitulo, bodyHtml, open, badgeHtml = ''){
   const id = 'sec' + (secCounter++);
   return `<details class="section" data-sec="${id}" ${open ? 'open' : ''}>
     <summary>
       <input type="checkbox" class="chk-sec" data-sec-target="${id}" title="Marcar / desmarcar toda la sección" />
       <span>${escapeHtml(titulo)}</span>
-      <span class="subtitle">${escapeHtml(subtitulo || '')}</span>
+      <span class="subtitle">${escapeHtml(subtitulo || '')}</span>${badgeHtml}
     </summary>
     <div class="body">${bodyHtml}</div>
   </details>`;
@@ -817,7 +1007,12 @@ function renderConsulta(c, idx){
   const dxP = (c.consultasDiagnosticosPrincipales || []).map(d => d.id || d.text || d.fk_enfermedad).filter(Boolean).join(', ');
   const dxR = (c.consultasDiagnosticosRelacionales || []).map(d => d.id || d.text || d.fk_enfermedad).filter(Boolean).join(', ');
 
-  return `<div class="grid">
+  const tipo = detectarTipoConsulta(c);
+  const banner = tipo
+    ? '<div class="preset-banner"><span>🏷 Tipo detectado: <b>' + escapeHtml(tipo) + '</b> · ' + escapeHtml(TIPOS_CONSULTA[tipo].nombre) + '</span><button type="button" class="btn small preset-btn" data-consulta-idx="' + idx + '">⚡ Aplicar preset ' + escapeHtml(tipo) + '</button></div>'
+    : '<div class="preset-banner warn"><span>⚠ Sin preset para el diagnóstico de esta consulta</span></div>';
+
+  return banner + `<div class="grid">
     ${items}
     <div class="field full${inclP ? ' incluido' : ''}">
       <label class="field-label"><input type="checkbox" data-incluir="${pathP}" ${inclP ? 'checked' : ''} /><span>Diagnóstico Principal (CIE-10)</span></label>
@@ -987,7 +1182,20 @@ function onFieldChange(e){
   updatePreview(); renderListaAdmisiones();
 
   if (/FacturasConsultasF\[\d+\]\.(cantidad_consulta|valor_unitario_consulta|cuota_moderadora)$/.test(path)) recalcularConsulta(path);
-  if (/FacturasProcedimientosF\[\d+\]\.(cantidad|valor_unitario|cuota_moderadora)$/.test(path)) recalcularProcedimiento(path);
+    if (/FacturasProcedimientosF\[\d+\]\.(cantidad|valor_unitario|cuota_moderadora)$/.test(path)) recalcularProcedimiento(path);
+
+  const _mC = path.match(/^(FacturasCompletasPasar\.FacturasConsultasF\[\d+\])\./);
+  if (_mC) {
+    const _base = _mC[1];
+    ['consultasDiagnosticosPrincipales','facturas_consultas_enfermedades_diagnostico_principal','consultasDiagnosticosRelacionales','facturas_consultas_enfermedades_diagnostico_relacional'].forEach(_suf => {
+      const _p = _base + '.' + _suf;
+      const _chk = document.querySelector('[data-incluir="' + _p + '"]');
+      if (_chk && !_chk.checked) { _chk.checked = true; adm.incluir.add(_p); const _f = _chk.closest('.field'); if (_f) _f.classList.add('incluido'); }
+    });
+    updatePreview();
+    renderListaAdmisiones();
+    syncCheckboxesSeccion();
+  }
 }
 
 function filtrarFinalidadConsulta(path){
@@ -1193,12 +1401,12 @@ async function subirAdmision(adm){
 
 function evaluarExito(res, body) {
   if (!res.ok) return { exito: false, msg: `HTTP ${res.status}` };
-  if (!body || typeof body !== 'object') return { exito: false, msg: 'Respuesta inválida del servidor' };
+  if (!body || typeof body !== 'object') return { exito: false, msg: 'Respuesta invalida del servidor' };
   if (body.errores > 0) return { exito: false, msg: body.mensajeRetorno || `Errores: ${body.errores}` };
-  
-  const msg = (body.mensajeRetorno || '').toLowerCase();
-  if (!msg.includes('actualizo correctamente')) {
-    return { exito: false, msg: body.mensajeRetorno || 'No se recibió mensaje de éxito' };
+
+  const msg = String(body.mensajeRetorno || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!/actualiz(o|o)\s+correctamente/.test(msg)) {
+    return { exito: false, msg: body.mensajeRetorno || 'No se recibio mensaje de exito' };
   }
   return { exito: true, msg: body.mensajeRetorno };
 }
